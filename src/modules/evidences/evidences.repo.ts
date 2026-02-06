@@ -1,5 +1,7 @@
 import { supabaseAdmin } from "../../core/infra/supabaseAdmin";
 import { ENV } from "../../core/config/env";
+import type { PdfEvidence } from "../reports/pdf/pdf.types";
+import { AppError } from "../reports/pdf/pdf.errors";
 
 export async function uploadFileToBucket(args: {
   occurrenceId: string;
@@ -42,15 +44,36 @@ export async function insertEvidenceRow(args: {
   return data;
 }
 
-export async function listEvidencesByOccurrence(occurrenceId: string) {
+export async function listEvidencesByOccurrence(
+  occurrenceId: string,
+): Promise<PdfEvidence[]> {
   const { data, error } = await supabaseAdmin
     .from("occurrence_evidences")
     .select("id, sort_order, storage_path, caption, created_at")
     .eq("occurrence_id", occurrenceId)
     .order("sort_order", { ascending: true });
 
-  if (error) throw error;
-  return data ?? [];
+  if (error) {
+    console.error("[listEvidencesByOccurrence] supabase error:", {
+      message: error.message,
+      details: (error as any).details,
+      hint: (error as any).hint,
+      code: (error as any).code,
+    });
+    throw new AppError(
+      500,
+      "Falha ao buscar evidências",
+      "EVIDENCES_QUERY_FAILED",
+    );
+  }
+
+  return (data ?? []).map((e: any) => ({
+    id: e.id,
+    storagePath: e.storage_path,
+    mimeType: null, // não existe na tabela -> inferimos no service pelo path
+    caption: e.caption ?? null,
+    sortOrder: e.sort_order ?? null,
+  }));
 }
 
 export async function getSignedUrl(storagePath: string) {
