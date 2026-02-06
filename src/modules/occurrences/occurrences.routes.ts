@@ -13,9 +13,13 @@ export function occurrencesRoutes(app: Express) {
     res.json({ data });
   });
 
-  app.post("/occurrences", async (req, res) => {
-    const payload = createOccurrenceSchema.parse(req.body);
-    const id = await createOccurrence(payload);
-    res.status(201).json({ id });
+  app.post("/occurrences", async (req, res, next) => {
+    try {
+      const payload = createOccurrenceSchema.parse(req.body);
+      const id = await createOccurrence(payload);
+      res.status(201).json({ id });
+    } catch (err) {
+      next(err);
+    }
   });
 }

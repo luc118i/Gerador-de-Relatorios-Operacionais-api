@@ -1,3 +1,4 @@
+// occurrences.repo.ts
 import { supabaseAdmin } from "../../core/infra/supabaseAdmin";
 
 export async function getTypeIdByCode(code: string) {
@@ -22,26 +23,35 @@ export async function insertOccurrence(data: any) {
   return row.id;
 }
 
-export async function insertDrivers(occurrenceId: string, drivers: any[]) {
-  await supabaseAdmin
+type DriverLink = { position: 1 | 2; driverId: string };
+
+export async function insertDrivers(
+  occurrenceId: string,
+  drivers: DriverLink[],
+) {
+  // remove vínculos antigos
+  const { error: delErr } = await supabaseAdmin
     .from("occurrence_drivers")
     .delete()
     .eq("occurrence_id", occurrenceId);
 
-  const { error } = await supabaseAdmin.from("occurrence_drivers").insert(
-    drivers.map((d) => ({
-      occurrence_id: occurrenceId,
-      position: d.position,
-      registry: d.registry,
-      name: d.name,
-      base_code: d.baseCode,
-    })),
-  );
+  if (delErr) throw delErr;
 
-  if (error) throw error;
+  // insere vínculos novos (snapshots via trigger)
+  const { error: insErr } = await supabaseAdmin
+    .from("occurrence_drivers")
+    .insert(
+      drivers.map((d) => ({
+        occurrence_id: occurrenceId,
+        position: d.position,
+        driver_id: d.driverId,
+      })),
+    );
+
+  if (insErr) throw insErr;
 }
 
-/** NOVO: listar por dia com drivers + evidences (count) + type */
+/** listar por dia com drivers + evidences (count) + type */
 export async function listOccurrencesByDay(date: string) {
   const { data, error } = await supabaseAdmin
     .from("occurrences")
@@ -58,7 +68,7 @@ export async function listOccurrencesByDay(date: string) {
       place,
       created_at,
       occurrence_types:occurrence_types (code, title),
-      occurrence_drivers (position, registry, name, base_code),
+      occurrence_drivers (position, driver_id, registry, name, base_code),
       occurrence_evidences (id)
     `,
     )
@@ -80,9 +90,15 @@ export async function listOccurrencesByDay(date: string) {
     lineLabel: o.line_label,
     place: o.place,
     createdAt: o.created_at,
-    drivers: (o.occurrence_drivers ?? []).sort(
-      (a: any, b: any) => a.position - b.position,
-    ),
+    drivers: (o.occurrence_drivers ?? [])
+      .sort((a: any, b: any) => a.position - b.position)
+      .map((d: any) => ({
+        position: d.position,
+        driverId: d.driver_id,
+        registry: d.registry,
+        name: d.name,
+        baseCode: d.base_code,
+      })),
     evidenceCount: (o.occurrence_evidences ?? []).length,
   }));
 }
