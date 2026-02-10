@@ -102,3 +102,35 @@ export async function listOccurrencesByDay(date: string) {
     evidenceCount: (o.occurrence_evidences ?? []).length,
   }));
 }
+
+export async function getBaseCodeFromOccurrenceDriver(occurrenceId: string) {
+  const { data, error } = await supabaseAdmin
+    .from("occurrence_drivers")
+    .select("base_code, position")
+    .eq("occurrence_id", occurrenceId)
+    .eq("position", 1)
+    .single();
+
+  if (error) throw error;
+  return (data?.base_code ?? "").trim();
+}
+
+export async function updateOccurrenceBaseCode(id: string, baseCode: string) {
+  const { error } = await supabaseAdmin
+    .from("occurrences")
+    .update({ base_code: baseCode })
+    .eq("id", id);
+
+  if (error) throw error;
+}
+
+export async function getDriverBaseById(driverId: string) {
+  const { data, error } = await supabaseAdmin
+    .from("drivers")
+    .select("base")
+    .eq("id", driverId)
+    .single();
+
+  if (error) throw error;
+  return (data?.base ?? "").trim();
+}

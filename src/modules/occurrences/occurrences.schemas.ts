@@ -3,13 +3,26 @@ import { z } from "zod";
 
 export const createOccurrenceSchema = z.object({
   typeCode: z.string(),
-  eventDate: z.string(),
-  tripDate: z.string(),
-  startTime: z.string(),
-  endTime: z.string(),
-  vehicleNumber: z.string(),
-  baseCode: z.string(),
-  place: z.string(),
+  eventDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "eventDate deve ser YYYY-MM-DD"),
+  tripDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "tripDate deve ser YYYY-MM-DD"),
+  startTime: z.string().regex(/^\d{2}:\d{2}$/, "startTime deve ser HH:mm"),
+  endTime: z.string().regex(/^\d{2}:\d{2}$/, "endTime deve ser HH:mm"),
+
+  // ✅ derivados
+  vehicleNumber: z.string().trim().min(1),
+
+  baseCode: z.string().trim().min(1).optional(),
+
+  // ✅ necessário para derivar vehicleNumber
+  tripId: z.string().optional(), // se for uuid, troque pra z.string().uuid().optional()
+
+  place: z.string().trim().min(1),
+
+  lineLabel: z.string().nullable().optional(), // opcional (se quiser)
 
   drivers: z
     .array(
