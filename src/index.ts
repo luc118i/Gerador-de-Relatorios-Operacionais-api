@@ -1,4 +1,4 @@
-import { app } from "./core/http/app";
+import { app } from "./core/http/app.js";
 import { registerRoutes } from "./core/http/router";
 import { errorHandler } from "./core/http/errorHandler";
 import { ENV } from "./core/config/env";
