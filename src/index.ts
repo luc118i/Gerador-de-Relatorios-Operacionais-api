@@ -1,7 +1,7 @@
 import { app } from "./core/http/app.js";
-import { registerRoutes } from "./core/http/router";
-import { errorHandler } from "./core/http/errorHandler";
-import { ENV } from "./core/config/env";
+import { registerRoutes } from "./core/http/router.js";
+import { errorHandler } from "./core/http/errorHandler.js";
+import { ENV } from "./core/config/env.js";
 import "dotenv/config";
 
 registerRoutes(app);
