@@ -3,6 +3,8 @@ import type { Express } from "express";
 import { createOccurrenceSchema } from "./occurrences.schemas";
 import { createOccurrence, getOccurrencesByDay } from "./occurrences.service";
 
+import { getOccurrenceById } from "./occurrences.repo";
+
 export function occurrencesRoutes(app: Express) {
   app.get("/occurrences", async (req, res) => {
     const date = String(req.query.date ?? "");
@@ -21,5 +23,11 @@ export function occurrencesRoutes(app: Express) {
     } catch (err) {
       next(err);
     }
+  });
+
+  app.get("/occurrences/:id", async (req, res) => {
+    const { id } = req.params;
+    const occurrence = await getOccurrenceById(id);
+    res.json({ data: occurrence });
   });
 }

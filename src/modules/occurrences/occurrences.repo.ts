@@ -134,3 +134,57 @@ export async function getDriverBaseById(driverId: string) {
   if (error) throw error;
   return (data?.base ?? "").trim();
 }
+
+// occurrences.repo.ts
+export async function getOccurrenceById(id: string) {
+  const { data, error } = await supabaseAdmin
+    .from("occurrences")
+    .select(
+      `
+      id,
+      event_date,
+      trip_date,
+      start_time,
+      end_time,
+      vehicle_number,
+      base_code,
+      line_label,
+      place,
+      created_at,
+      occurrence_types:occurrence_types (code, title),
+      occurrence_drivers (position, driver_id, registry, name, base_code),
+      occurrence_evidences (id)
+    `,
+    )
+    .eq("id", id)
+    .single();
+
+  if (error) throw error;
+
+  const o: any = data;
+
+  return {
+    id: o.id,
+    typeCode: o.occurrence_types?.code ?? null,
+    typeTitle: o.occurrence_types?.title ?? null,
+    eventDate: o.event_date,
+    tripDate: o.trip_date,
+    startTime: o.start_time?.slice(0, 5),
+    endTime: o.end_time?.slice(0, 5),
+    vehicleNumber: o.vehicle_number,
+    baseCode: o.base_code,
+    lineLabel: o.line_label,
+    place: o.place,
+    createdAt: o.created_at,
+    drivers: (o.occurrence_drivers ?? [])
+      .sort((a: any, b: any) => a.position - b.position)
+      .map((d: any) => ({
+        position: d.position,
+        driverId: d.driver_id,
+        registry: d.registry,
+        name: d.name,
+        baseCode: d.base_code,
+      })),
+    evidenceCount: (o.occurrence_evidences ?? []).length,
+  };
+}
