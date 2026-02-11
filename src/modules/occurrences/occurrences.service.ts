@@ -5,7 +5,7 @@ import {
   listOccurrencesByDay,
   getBaseCodeFromOccurrenceDriver,
   updateOccurrenceBaseCode,
-  getDriverBaseById, // <- use esta
+  getDriverBaseById,
 } from "./occurrences.repo.js";
 
 export async function createOccurrence(payload: any) {

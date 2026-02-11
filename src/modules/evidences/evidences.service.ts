@@ -3,7 +3,7 @@ import {
   insertEvidenceRow,
   listEvidencesByOccurrence,
   uploadFileToBucket,
-} from "./evidences.repo";
+} from "./evidences.repo.js";
 
 export async function uploadEvidences(args: {
   occurrenceId: string;

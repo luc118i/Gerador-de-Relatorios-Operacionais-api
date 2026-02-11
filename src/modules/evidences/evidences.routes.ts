@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import multer from "multer";
-import { uploadEvidences, getEvidences } from "./evidences.service";
+import { uploadEvidences, getEvidences } from "./evidences.service.js";
 
 const upload = multer({
   storage: multer.memoryStorage(),
