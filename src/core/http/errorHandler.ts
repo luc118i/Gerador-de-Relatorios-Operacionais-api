@@ -1,6 +1,6 @@
 import type { ErrorRequestHandler } from "express";
 import { ZodError } from "zod";
-import { AppError } from "../../modules/reports/pdf/pdf.errors";
+import { AppError } from "../../modules/reports/pdf/pdf.errors.js";
 
 function getSupabaseCode(err: any): string | undefined {
   // supabase-js costuma expor `code`
