@@ -6,7 +6,7 @@ import {
   getBaseCodeFromOccurrenceDriver,
   updateOccurrenceBaseCode,
   getDriverBaseById, // <- use esta
-} from "./occurrences.repo";
+} from "./occurrences.repo.js";
 
 export async function createOccurrence(payload: any) {
   const typeId = await getTypeIdByCode(payload.typeCode);

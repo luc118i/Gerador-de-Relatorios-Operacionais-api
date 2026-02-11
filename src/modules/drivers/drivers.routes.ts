@@ -1,7 +1,7 @@
 // src/modules/drivers/drivers.routes.ts
 import type { Express } from "express";
-import { createDriverSchema, searchDriversSchema } from "./drivers.schemas";
-import { createDriver, listDrivers } from "./drivers.service";
+import { createDriverSchema, searchDriversSchema } from "./drivers.schemas.js";
+import { createDriver, listDrivers } from "./drivers.service.js";
 
 export function driversRoutes(app: Express) {
   app.get("/drivers", async (req, res) => {

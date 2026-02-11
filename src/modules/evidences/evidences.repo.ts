@@ -1,7 +1,7 @@
-import { supabaseAdmin } from "../../core/infra/supabaseAdmin";
-import { ENV } from "../../core/config/env";
-import type { PdfEvidence } from "../reports/pdf/pdf.types";
-import { AppError } from "../reports/pdf/pdf.errors";
+import { supabaseAdmin } from "../../core/infra/supabaseAdmin.js";
+import { ENV } from "../../core/config/env.js";
+import type { PdfEvidence } from "../reports/pdf/pdf.types.js";
+import { AppError } from "../reports/pdf/pdf.errors.js";
 
 export async function uploadFileToBucket(args: {
   occurrenceId: string;

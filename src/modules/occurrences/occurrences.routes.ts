@@ -1,9 +1,12 @@
 import type { Express } from "express";
 
-import { createOccurrenceSchema } from "./occurrences.schemas";
-import { createOccurrence, getOccurrencesByDay } from "./occurrences.service";
+import { createOccurrenceSchema } from "./occurrences.schemas.js";
+import {
+  createOccurrence,
+  getOccurrencesByDay,
+} from "./occurrences.service.js";
 
-import { getOccurrenceById } from "./occurrences.repo";
+import { getOccurrenceById } from "./occurrences.repo.js";
 
 export function occurrencesRoutes(app: Express) {
   app.get("/occurrences", async (req, res) => {

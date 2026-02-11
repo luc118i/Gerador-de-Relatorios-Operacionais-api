@@ -1,5 +1,5 @@
-import { listOccurrencesByDay } from "../occurrences/occurrences.repo";
-import type { DailyReportResult } from "./reports.types";
+import { listOccurrencesByDay } from "../occurrences/occurrences.repo.js";
+import type { DailyReportResult } from "./reports.types.js";
 
 function toBRDate(iso: string) {
   // iso YYYY-MM-DD -> DD/MM/YYYY

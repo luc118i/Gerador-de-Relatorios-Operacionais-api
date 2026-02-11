@@ -1,5 +1,5 @@
 // src/modules/drivers/drivers.repo.ts
-import { supabaseAdmin } from "../../core/infra/supabaseAdmin";
+import { supabaseAdmin } from "../../core/infra/supabaseAdmin.js";
 
 export async function searchDrivers(args: {
   search?: string;

@@ -1,5 +1,5 @@
 // src/modules/drivers/drivers.service.ts
-import { insertDriver, searchDrivers } from "./drivers.repo";
+import { insertDriver, searchDrivers } from "./drivers.repo.js";
 
 export async function listDrivers(args: {
   search?: string;

@@ -1,5 +1,5 @@
 import puppeteer, { type Browser } from "puppeteer";
-import { AppError } from "./pdf.errors";
+import { AppError } from "./pdf.errors.js";
 
 let cachedBrowser: Browser | null = null;
 

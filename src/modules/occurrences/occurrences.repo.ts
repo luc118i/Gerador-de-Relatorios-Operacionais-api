@@ -1,5 +1,5 @@
 // occurrences.repo.ts
-import { supabaseAdmin } from "../../core/infra/supabaseAdmin";
+import { supabaseAdmin } from "../../core/infra/supabaseAdmin.js";
 
 export async function getTypeIdByCode(code: string) {
   const { data, error } = await supabaseAdmin

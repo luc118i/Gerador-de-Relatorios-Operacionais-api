@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
 import { z } from "zod";
-import { buildOccurrencePdf } from "./pdf.service";
-import { AppError } from "./pdf.errors";
+import { buildOccurrencePdf } from "./pdf.service.js";
+import { AppError } from "./pdf.errors.js";
 
 const first = (v: unknown) => (Array.isArray(v) ? v[0] : v);
 

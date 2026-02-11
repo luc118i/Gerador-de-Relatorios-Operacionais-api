@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { ENV } from "../config/env";
+import { ENV } from "../config/env.js";
 
 export const supabaseAdmin = createClient(
   ENV.SUPABASE_URL,

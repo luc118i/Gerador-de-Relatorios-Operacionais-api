@@ -1,6 +1,6 @@
-import { supabaseAdmin } from "../../../core/config/supabase";
-import type { PdfDriver, PdfEvidence, PdfOccurrence } from "./pdf.types";
-import { AppError } from "./pdf.errors";
+import { supabaseAdmin } from "../../../core/config/supabase.js";
+import type { PdfDriver, PdfEvidence, PdfOccurrence } from "./pdf.types.js";
+import { AppError } from "./pdf.errors.js";
 
 export async function getOccurrenceForPdf(
   occurrenceId: string,

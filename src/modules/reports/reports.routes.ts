@@ -1,6 +1,6 @@
 import { Router } from "express";
 import type { Express } from "express";
-import { buildDailyReport } from "./reports.service";
+import { buildDailyReport } from "./reports.service.js";
 
 const router = Router();
 

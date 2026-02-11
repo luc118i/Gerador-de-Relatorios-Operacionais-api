@@ -1,5 +1,5 @@
-import { supabaseAdmin } from "../../../core/config/supabase";
-import { AppError } from "./pdf.errors";
+import { supabaseAdmin } from "../../../core/config/supabase.js";
+import { AppError } from "./pdf.errors.js";
 
 export async function downloadPrivateFileAsBuffer(
   bucket: string,

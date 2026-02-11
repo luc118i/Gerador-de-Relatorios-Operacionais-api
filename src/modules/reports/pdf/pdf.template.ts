@@ -1,4 +1,4 @@
-import type { PdfDriver, PdfOccurrence } from "./pdf.types";
+import type { PdfDriver, PdfOccurrence } from "./pdf.types.js";
 
 type EvidenceInput = { dataUri: string; caption?: string | null };
 

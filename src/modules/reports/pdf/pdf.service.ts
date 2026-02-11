@@ -1,26 +1,23 @@
 import mime from "mime-types";
-import { AppError } from "./pdf.errors";
-
-import { getLogoDataUri } from "./pdf.assets";
+import { AppError } from "./pdf.errors.js";
+import { getLogoDataUri } from "./pdf.assets.js";
 import {
   getOccurrenceForPdf,
   listDriversByOccurrence,
   listEvidencesByOccurrence,
-} from "./pdf.repo";
+} from "./pdf.repo.js";
 import {
   downloadPrivateFileAsBuffer,
   uploadPrivatePdf,
   createSignedUrl,
   pdfExists,
-} from "./pdf.storage";
-import { buildOccurrencePdfHtml } from "./pdf.template";
-import { renderPdfFromHtml } from "./pdf.puppeteer";
-import type { BuildPdfResult } from "./pdf.types";
+} from "./pdf.storage.js";
+import { buildOccurrencePdfHtml } from "./pdf.template.js";
+import { renderPdfFromHtml } from "./pdf.puppeteer.js";
+import type { BuildPdfResult, PdfEvidence } from "./pdf.types.js";
 
 const EVIDENCES_BUCKET = process.env.SUPABASE_BUCKET ?? "occurrence-evidences";
-
-const REPORTS_BUCKET =
-  process.env.SUPABASE_REPORTS_BUCKET ?? "occurrence-evidences";
+const REPORTS_BUCKET = process.env.SUPABASE_REPORTS_BUCKET ?? "reports";
 
 export async function buildOccurrencePdf(args: {
   occurrenceId: string;
@@ -30,6 +27,7 @@ export async function buildOccurrencePdf(args: {
 }): Promise<BuildPdfResult> {
   const occurrenceId = args.occurrenceId;
   const force = args.force ?? false;
+
   const ttlSeconds = clamp(
     args.ttlSeconds ?? Number(process.env.REPORTS_PDF_TTL ?? 3600),
     60,
@@ -45,7 +43,8 @@ export async function buildOccurrencePdf(args: {
   const [drivers, evidences] = await Promise.all([
     listDriversByOccurrence(occurrenceId),
     listEvidencesByOccurrence(occurrenceId),
-  ]);
+  ] as const);
+
   console.log("[pdf] fetched drivers/evidences", {
     drivers: drivers.length,
     evidences: evidences.length,
@@ -78,8 +77,9 @@ export async function buildOccurrencePdf(args: {
   }
 
   console.log("[pdf] embedding evidences...");
+
   const embedded = await Promise.all(
-    evidences.map(async (e, idx) => {
+    evidences.map(async (e: PdfEvidence, idx: number) => {
       console.log("[pdf] download evidence", {
         idx: idx + 1,
         path: e.storagePath,
@@ -90,17 +90,9 @@ export async function buildOccurrencePdf(args: {
         e.storagePath,
       );
 
+      const guessed = mime.lookup(e.storagePath);
       const mimeType =
-        e.mimeType ||
-        (mime.lookup(e.storagePath)
-          ? String(mime.lookup(e.storagePath))
-          : "application/octet-stream");
-
-      console.log("[pdf] evidence ok", {
-        idx: idx + 1,
-        bytes: buf.length,
-        mimeType,
-      });
+        e.mimeType ?? (guessed ? String(guessed) : "application/octet-stream");
 
       const b64 = buf.toString("base64");
       return {
@@ -109,6 +101,7 @@ export async function buildOccurrencePdf(args: {
       };
     }),
   );
+
   console.log("[pdf] embedded ok", { count: embedded.length });
 
   const html = buildOccurrencePdfHtml({
@@ -118,6 +111,7 @@ export async function buildOccurrencePdf(args: {
     evidences: embedded,
     logoDataUri: getLogoDataUri(),
   });
+
   console.log("[pdf] html ok", { chars: html.length });
 
   const pdfBuffer = await renderPdfFromHtml(html);
