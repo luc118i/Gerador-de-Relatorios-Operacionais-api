@@ -21,6 +21,7 @@
     "mime-types": "^3.0.2",
     "multer": "^2.0.2",
     "puppeteer": "^24.37.1",
+    "sharp": "^0.34.5",
     "zod": "^4.3.6"
   },
   "devDependencies": {

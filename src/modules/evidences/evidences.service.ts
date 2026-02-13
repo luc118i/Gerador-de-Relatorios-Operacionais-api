@@ -5,6 +5,8 @@ import {
   uploadFileToBucket,
 } from "./evidences.repo.js";
 
+import sharp from "sharp";
+
 export async function uploadEvidences(args: {
   occurrenceId: string;
   files: Express.Multer.File[];
@@ -19,11 +21,24 @@ export async function uploadEvidences(args: {
   let sortOrder = 1;
 
   for (const file of args.files) {
+    // --- NOVO BLOCO DE REDIMENSIONAMENTO ---
+    let finalBuffer = file.buffer;
+
+    // Só processa se for imagem (ignora se for PDF ou outro arquivo)
+    if (file.mimetype.startsWith("image/")) {
+      console.log(`[resize] Processando imagem: ${file.originalname}`);
+      finalBuffer = await sharp(file.buffer)
+        .resize(800) // Limita a largura a 800px (mantém proporção)
+        .jpeg({ quality: 80 }) // Converte para JPEG (mais leve que PNG)
+        .toBuffer();
+    }
+    // ---------------------------------------
+
     const storagePath = await uploadFileToBucket({
       occurrenceId: args.occurrenceId,
-      filename: file.originalname,
-      mimeType: file.mimetype,
-      buffer: file.buffer,
+      filename: file.originalname.replace(/\.[^/.]+$/, ".jpg"), // Ajusta extensão para .jpg
+      mimeType: "image/jpeg",
+      buffer: finalBuffer, // Envia o buffer reduzido
     });
 
     const row = await insertEvidenceRow({
