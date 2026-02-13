@@ -33,12 +33,16 @@ export async function uploadPrivatePdf(
       cacheControl: "3600",
     });
 
-  if (error)
+  if (error) {
+    // ADICIONE ESTE LOG AQUI:
+    console.error(`[pdf:upload] Erro ao subir para o bucket ${bucket}:`, error);
+
     throw new AppError(
       500,
-      "Falha ao salvar PDF no Storage",
+      `Falha ao salvar PDF no Storage: ${error.message}`, // Inclua a mensagem original
       "STORAGE_UPLOAD_FAILED",
     );
+  }
 }
 
 export async function createSignedUrl(
