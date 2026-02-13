@@ -72,8 +72,14 @@ export async function listOccurrencesByDay(date: string) {
       occurrence_evidences (id)
     `,
     )
-    .eq("event_date", date)
-    .order("start_time", { ascending: true });
+    // --- ALTERAÇÃO AQUI ---
+    // Em vez de .eq("event_date", date)
+    // Filtramos o created_at entre o início e o fim do dia informado
+    .gte("created_at", `${date}T00:00:00.000Z`)
+    .lte("created_at", `${date}T23:59:59.999Z`)
+
+    // -----------------------
+    .order("created_at", { ascending: false }); // Geralmente melhor ver as últimas criadas primeiro
 
   if (error) throw error;
 

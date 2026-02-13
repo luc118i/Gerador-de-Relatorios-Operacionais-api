@@ -9,8 +9,9 @@ import {
 import { getOccurrenceById } from "./occurrences.repo.js";
 
 export function occurrencesRoutes(app: Express) {
+  // 1. Rota de Listagem (Mantenha apenas uma)
   app.get("/occurrences", async (req, res) => {
-    const date = String(req.query.date ?? "");
+    const date = String(req.query.date || req.query.reportDate || "");
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
       return res.status(400).json({ error: "date must be YYYY-MM-DD" });
     }
@@ -18,6 +19,7 @@ export function occurrencesRoutes(app: Express) {
     res.json({ data });
   });
 
+  // 2. Rota de Criação
   app.post("/occurrences", async (req, res, next) => {
     try {
       const payload = createOccurrenceSchema.parse(req.body);
@@ -28,9 +30,19 @@ export function occurrencesRoutes(app: Express) {
     }
   });
 
+  // 3. ADICIONE ESTA ROTA (O que estava faltando!)
   app.get("/occurrences/:id", async (req, res) => {
-    const { id } = req.params;
-    const occurrence = await getOccurrenceById(id);
-    res.json({ data: occurrence });
+    try {
+      const { id } = req.params;
+      const data = await getOccurrenceById(id);
+
+      if (!data) {
+        return res.status(404).json({ error: "Occurrence not found" });
+      }
+
+      res.json({ data });
+    } catch (err) {
+      res.status(500).json({ error: "Internal server error" });
+    }
   });
 }

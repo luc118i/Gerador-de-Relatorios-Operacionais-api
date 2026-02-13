@@ -35,20 +35,12 @@ export async function buildOccurrencePdf(args: {
   );
   const maxPhotos = clamp(args.maxPhotos ?? 20, 1, 50);
 
-  console.log("[pdf] start", { occurrenceId, force, ttlSeconds, maxPhotos });
-
   const occurrence = await getOccurrenceForPdf(occurrenceId);
-  console.log("[pdf] occurrence ok");
 
   const [drivers, evidences] = await Promise.all([
     listDriversByOccurrence(occurrenceId),
     listEvidencesByOccurrence(occurrenceId),
   ] as const);
-
-  console.log("[pdf] fetched drivers/evidences", {
-    drivers: drivers.length,
-    evidences: evidences.length,
-  });
 
   if (evidences.length > maxPhotos) {
     throw new AppError(
@@ -59,11 +51,9 @@ export async function buildOccurrencePdf(args: {
   }
 
   const pdfStoragePath = `occurrences/${occurrenceId}/report.pdf`;
-  console.log("[pdf] pdfStoragePath", { pdfStoragePath });
 
   if (!force) {
     const exists = await pdfExists(REPORTS_BUCKET, pdfStoragePath);
-    console.log("[pdf] cache check", { exists });
 
     if (exists) {
       const signedUrl = await createSignedUrl(
@@ -71,20 +61,13 @@ export async function buildOccurrencePdf(args: {
         pdfStoragePath,
         ttlSeconds,
       );
-      console.log("[pdf] cache hit -> signedUrl ok");
+
       return { pdfStoragePath, signedUrl, ttlSeconds, cached: true };
     }
   }
 
-  console.log("[pdf] embedding evidences...");
-
   const embedded = await Promise.all(
     evidences.map(async (e: PdfEvidence, idx: number) => {
-      console.log("[pdf] download evidence", {
-        idx: idx + 1,
-        path: e.storagePath,
-      });
-
       const buf = await downloadPrivateFileAsBuffer(
         EVIDENCES_BUCKET,
         e.storagePath,
@@ -102,8 +85,6 @@ export async function buildOccurrencePdf(args: {
     }),
   );
 
-  console.log("[pdf] embedded ok", { count: embedded.length });
-
   const html = buildOccurrencePdfHtml({
     occurrence,
     drivers,
@@ -112,20 +93,15 @@ export async function buildOccurrencePdf(args: {
     logoDataUri: getLogoDataUri(),
   });
 
-  console.log("[pdf] html ok", { chars: html.length });
-
   const pdfBuffer = await renderPdfFromHtml(html);
-  console.log("[pdf] puppeteer ok", { bytes: pdfBuffer.length });
 
   await uploadPrivatePdf(REPORTS_BUCKET, pdfStoragePath, pdfBuffer);
-  console.log("[pdf] upload ok");
 
   const signedUrl = await createSignedUrl(
     REPORTS_BUCKET,
     pdfStoragePath,
     ttlSeconds,
   );
-  console.log("[pdf] signedUrl ok");
 
   return { pdfStoragePath, signedUrl, ttlSeconds, cached: false };
 }

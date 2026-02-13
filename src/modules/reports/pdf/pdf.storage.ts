@@ -25,11 +25,6 @@ export async function uploadPrivatePdf(
   path: string,
   pdfBuffer: Buffer,
 ): Promise<void> {
-  // LOG DE DEPURAÇÃO: Tamanho do arquivo que estamos tentando subir
-  console.log(
-    `[pdf:upload] Tentando subir PDF para ${path} (${pdfBuffer.length} bytes)`,
-  );
-
   const { error } = await supabaseAdmin.storage
     .from(bucket)
     .upload(path, pdfBuffer, {

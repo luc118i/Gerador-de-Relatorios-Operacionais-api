@@ -26,7 +26,6 @@ export async function uploadEvidences(args: {
 
     // Só processa se for imagem (ignora se for PDF ou outro arquivo)
     if (file.mimetype.startsWith("image/")) {
-      console.log(`[resize] Processando imagem: ${file.originalname}`);
       finalBuffer = await sharp(file.buffer)
         .resize(800) // Limita a largura a 800px (mantém proporção)
         .jpeg({ quality: 80 }) // Converte para JPEG (mais leve que PNG)
