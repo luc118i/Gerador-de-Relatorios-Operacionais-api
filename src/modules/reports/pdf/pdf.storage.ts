@@ -25,6 +25,11 @@ export async function uploadPrivatePdf(
   path: string,
   pdfBuffer: Buffer,
 ): Promise<void> {
+  // LOG DE DEPURAÇÃO: Tamanho do arquivo que estamos tentando subir
+  console.log(
+    `[pdf:upload] Tentando subir PDF para ${path} (${pdfBuffer.length} bytes)`,
+  );
+
   const { error } = await supabaseAdmin.storage
     .from(bucket)
     .upload(path, pdfBuffer, {
@@ -34,12 +39,12 @@ export async function uploadPrivatePdf(
     });
 
   if (error) {
-    // ADICIONE ESTE LOG AQUI:
-    console.error(`[pdf:upload] Erro ao subir para o bucket ${bucket}:`, error);
+    // ISSO VAI MOSTRAR O ERRO REAL NO LOG DA KOYEB (ex: Bucket not found, Payload too large)
+    console.error("[pdf:upload] Erro detalhado do Supabase:", error);
 
     throw new AppError(
       500,
-      `Falha ao salvar PDF no Storage: ${error.message}`, // Inclua a mensagem original
+      `Falha ao salvar PDF no Storage: ${error.message}`,
       "STORAGE_UPLOAD_FAILED",
     );
   }
