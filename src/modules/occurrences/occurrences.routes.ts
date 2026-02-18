@@ -47,18 +47,17 @@ export function occurrencesRoutes(app: Express) {
 
   app.put("/occurrences/:id", async (req, res) => {
     try {
-      await updateOccurrence(req.params.id, req.body);
+      const { id } = req.params;
+
+      await updateOccurrence(id, req.body);
+
       res.json({ success: true });
-    } catch (err: unknown) {
-      // 'err' é unknown
-      if (err instanceof Error) {
-        // Aqui dentro o TS sabe que 'err' é um Error e permite o .message
-        console.error("Erro na rota PUT:", err.message);
-        res.status(500).json({ error: err.message });
-      } else {
-        // Caso o erro disparado não seja um objeto Error padrão
-        res.status(500).json({ error: "Erro desconhecido" });
-      }
+    } catch (err: any) {
+      // Isso vai imprimir o erro completo (stack trace) no seu terminal preto do VS Code
+      console.error("DEBUG - OBJETO DE ERRO COMPLETO:", err);
+
+      const msg = err?.message || "Erro sem mensagem detalhada";
+      res.status(500).json({ error: msg, details: err });
     }
   });
 }
