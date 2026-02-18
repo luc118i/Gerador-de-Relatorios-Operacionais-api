@@ -6,7 +6,7 @@ import {
   getOccurrencesByDay,
 } from "./occurrences.service.js";
 
-import { getOccurrenceById } from "./occurrences.repo.js";
+import { getOccurrenceById, updateOccurrence } from "./occurrences.repo.js";
 
 export function occurrencesRoutes(app: Express) {
   // 1. Rota de Listagem (Mantenha apenas uma)
@@ -30,7 +30,6 @@ export function occurrencesRoutes(app: Express) {
     }
   });
 
-  // 3. ADICIONE ESTA ROTA (O que estava faltando!)
   app.get("/occurrences/:id", async (req, res) => {
     try {
       const { id } = req.params;
@@ -43,6 +42,23 @@ export function occurrencesRoutes(app: Express) {
       res.json({ data });
     } catch (err) {
       res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.put("/occurrences/:id", async (req, res) => {
+    try {
+      await updateOccurrence(req.params.id, req.body);
+      res.json({ success: true });
+    } catch (err: unknown) {
+      // 'err' é unknown
+      if (err instanceof Error) {
+        // Aqui dentro o TS sabe que 'err' é um Error e permite o .message
+        console.error("Erro na rota PUT:", err.message);
+        res.status(500).json({ error: err.message });
+      } else {
+        // Caso o erro disparado não seja um objeto Error padrão
+        res.status(500).json({ error: "Erro desconhecido" });
+      }
     }
   });
 }

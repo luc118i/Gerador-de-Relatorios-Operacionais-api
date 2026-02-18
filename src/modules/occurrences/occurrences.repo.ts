@@ -141,7 +141,6 @@ export async function getDriverBaseById(driverId: string) {
   return (data?.base ?? "").trim();
 }
 
-// occurrences.repo.ts
 export async function getOccurrenceById(id: string) {
   const { data, error } = await supabaseAdmin
     .from("occurrences")
@@ -193,4 +192,44 @@ export async function getOccurrenceById(id: string) {
       })),
     evidenceCount: (o.occurrence_evidences ?? []).length,
   };
+}
+
+export async function updateOccurrence(id: string, data: any) {
+  const { error } = await supabaseAdmin
+    .from("occurrences")
+    .update({
+      ...data,
+      // pdf_url e pdf_expires_at devem existir na tabela para isso funcionar
+      pdf_url: null,
+      pdf_expires_at: null,
+      // updated_at: removido, pois o TRIGGER trg_occurrences_updated_at já faz isso
+    })
+    .eq("id", id);
+
+  if (error) throw error;
+}
+
+export async function updateOccurrenceData(id: string, data: any) {
+  const { error } = await supabaseAdmin
+    .from("occurrences")
+    .update({
+      type_id: data.type_id,
+      event_date: data.event_date,
+      trip_date: data.trip_date,
+      start_time: data.start_time,
+      end_time: data.end_time,
+      vehicle_number: data.vehicle_number,
+      base_code: data.base_code,
+      line_label: data.line_label,
+      place: data.place,
+      pdf_url: null, // Força a limpeza para gerar novo PDF
+      pdf_expires_at: null, // Força a limpeza
+    })
+    .eq("id", id);
+
+  if (error) {
+    // Isso fará o erro aparecer no terminal do VS Code/Node
+    console.error("ERRO CRÍTICO SUPABASE:", error.message);
+    throw new Error(`Erro no Banco: ${error.message}`);
+  }
 }
