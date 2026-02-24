@@ -15,7 +15,54 @@ export async function renderPdfFromHtml(html: string): Promise<Buffer> {
     const pdf = await page.pdf({
       format: "A4",
       printBackground: true,
-      preferCSSPageSize: true,
+      displayHeaderFooter: true,
+
+      margin: {
+        top: "22mm",
+        right: "16mm",
+        bottom: "25mm",
+        left: "16mm",
+      },
+
+      footerTemplate: `
+    <div style="
+      width:100%;
+      font-size:9px;
+      padding:0 16mm;
+      box-sizing:border-box;
+      color:#666;
+      font-family: Arial, Helvetica, sans-serif;
+    ">
+      <div style="
+        border-top:1px solid #ddd;
+        margin-bottom:6px;
+      "></div>
+
+      <div style="
+        display:flex;
+        justify-content:space-between;
+        align-items:flex-end;
+        width:100%;
+      ">
+        <div style="
+          flex:1;
+          text-align:center;
+          line-height:1.3;
+        ">
+          KANDANGO TRANSPORTE E TURISMO LTDA<br/>
+          CNPJ: 03.233.439/0001-52
+        </div>
+
+        <div style="
+          min-width:120px;
+          text-align:right;
+        ">
+          Página <span class="pageNumber"></span>
+          de <span class="totalPages"></span>
+        </div>
+      </div>
+    </div>
+  `,
     });
 
     await page.close();

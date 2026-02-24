@@ -91,7 +91,7 @@ export function buildOccurrencePdfHtml(args: {
       margin-top: 22mm;
       margin-right: 16mm;
       margin-left: 16mm;
-      margin-bottom: 22mm;
+      margin-bottom: 25mm;
     }
 
     body {
@@ -211,36 +211,7 @@ export function buildOccurrencePdfHtml(args: {
       line-height: 1.25;
     }
 
-    /* RODAPÉ maior */
-    .footer {
-      position: fixed;
-      bottom: 0; left: 0; right: 0;
-      padding: 6mm 16mm 6mm 16mm;
-      font-size: 9pt;
-      color: #666;
-    }
-    .footer .line {
-      border-top: 1px solid #ddd;
-      margin-bottom: 8px;
-    }
-    .footer .content {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-end;
-      gap: 12px;
-    }
-    .footer .center {
-      text-align: center;
-      flex: 1;
-      line-height: 1.25;
-    }
-    .footer .right {
-      min-width: 130px;
-      text-align: right;
-      white-space: nowrap;
-    }
-    .pageNumber:before { content: counter(page); }
-    .totalPages:before { content: counter(pages); }
+  
   </style>
 </head>
 
@@ -277,18 +248,7 @@ export function buildOccurrencePdfHtml(args: {
   <div class="section-title">EVIDÊNCIAS</div>
   ${evidenceHtml}
 
-  <div class="footer">
-    <div class="line"></div>
-    <div class="content">
-      <div class="center">
-        <div>${escapeHtml(company)}</div>
-        <div>CNPJ.: ${escapeHtml(cnpj)}</div>
-      </div>
-      <div class="right">
-        Página <span class="pageNumber"></span> de <span class="totalPages"></span>
-      </div>
-    </div>
-  </div>
+
 </body>
 </html>`;
 }
