@@ -98,7 +98,17 @@ export async function listEvidencesByOccurrence(
 ): Promise<PdfEvidence[]> {
   const { data, error } = await supabaseAdmin
     .from("occurrence_evidences")
-    .select("id, sort_order, storage_path, caption, created_at")
+    .select(
+      `
+      id,
+      sort_order,
+      storage_path,
+      caption,
+      link_texto,
+      link_url,
+      created_at
+`,
+    )
     .eq("occurrence_id", occurrenceId)
     .order("sort_order", { ascending: true });
 
@@ -114,8 +124,10 @@ export async function listEvidencesByOccurrence(
   return (data ?? []).map((e: any) => ({
     id: e.id,
     storagePath: e.storage_path,
-    mimeType: null, // não existe na tabela -> inferimos pelo path no service
-    caption: e.caption ?? null,
+    mimeType: null,
+    caption: e.caption,
+    linkTexto: e.link_texto,
+    linkUrl: e.link_url,
     sortOrder: e.sort_order ?? null,
   }));
 }

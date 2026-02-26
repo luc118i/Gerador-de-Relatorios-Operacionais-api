@@ -4,6 +4,8 @@ export type PdfEvidence = {
   mimeType: string | null;
   caption?: string | null;
   sortOrder?: number | null;
+  linkTexto?: string | null;
+  linkUrl?: string | null;
 };
 
 export type PdfOccurrence = {

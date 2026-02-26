@@ -18,4 +18,5 @@ app.get("/health", (_, res) => res.json({ ok: true }));
 
 app.listen(ENV.PORT, () => {
   console.log(`🚀 API running on http://localhost:${ENV.PORT}`);
+  console.log("VERSION 2 - METADATA PATCH ATIVO");
 });

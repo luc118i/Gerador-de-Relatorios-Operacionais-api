@@ -67,20 +67,26 @@ export async function buildOccurrencePdf(args: {
   }
 
   const embedded = await Promise.all(
-    evidences.map(async (e: PdfEvidence, idx: number) => {
+    evidences.map(async (e: any) => {
       const buf = await downloadPrivateFileAsBuffer(
         EVIDENCES_BUCKET,
         e.storagePath,
       );
 
-      const guessed = mime.lookup(e.storagePath);
+      const guessed = mime.lookup(e.storage_path || e.storagePath);
       const mimeType =
-        e.mimeType ?? (guessed ? String(guessed) : "application/octet-stream");
+        e.mime_type ??
+        e.mimeType ??
+        (guessed ? String(guessed) : "application/octet-stream");
 
       const b64 = buf.toString("base64");
+
       return {
         dataUri: `data:${mimeType};base64,${b64}`,
-        caption: e.caption ?? null,
+        caption: e.caption ?? "",
+
+        linkTexto: String(e.linkTexto || "").trim(),
+        linkUrl: String(e.linkUrl || "").trim(),
       };
     }),
   );

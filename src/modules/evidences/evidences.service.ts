@@ -10,6 +10,11 @@ import sharp from "sharp";
 export async function uploadEvidences(args: {
   occurrenceId: string;
   files: Express.Multer.File[];
+  metadata: Array<{
+    caption?: string | null;
+    linkTexto?: string | null;
+    linkUrl?: string | null;
+  }>;
 }) {
   const out: Array<{
     id: string;
@@ -20,7 +25,10 @@ export async function uploadEvidences(args: {
 
   let sortOrder = 1;
 
-  for (const file of args.files) {
+  for (let i = 0; i < args.files.length; i++) {
+    const file = args.files[i];
+    if (!file) continue;
+    const meta = args.metadata?.[i] ?? {};
     // --- NOVO BLOCO DE REDIMENSIONAMENTO ---
     let finalBuffer = file.buffer;
 
@@ -44,6 +52,9 @@ export async function uploadEvidences(args: {
       occurrenceId: args.occurrenceId,
       sortOrder,
       storagePath,
+      caption: meta.caption ?? null,
+      linkTexto: meta.linkTexto ?? null,
+      linkUrl: meta.linkUrl ?? null,
     });
 
     const url = await getSignedUrl(row.storage_path);

@@ -1,6 +1,11 @@
 import type { PdfDriver, PdfOccurrence } from "./pdf.types.js";
 
-type EvidenceInput = { dataUri: string; caption?: string | null };
+type EvidenceInput = {
+  dataUri: string;
+  caption?: string | null;
+  linkTexto?: string;
+  linkUrl?: string;
+};
 
 export function buildOccurrencePdfHtml(args: {
   occurrence: PdfOccurrence;
@@ -62,18 +67,47 @@ export function buildOccurrencePdfHtml(args: {
     evidences.length === 0
       ? `<div class="muted">Sem evidências anexadas.</div>`
       : `<div class="evidences">
-          ${evidences
-            .map((e) => {
-              const cap = (e.caption ?? "").trim();
-              return `
-                <figure class="ev">
-                  <img src="${e.dataUri}" alt="Evidência" />
-                  ${cap ? `<figcaption>${escapeHtml(cap)}</figcaption>` : ""}
-                </figure>
-              `;
-            })
-            .join("")}
-        </div>`;
+        ${evidences
+          .map((e) => {
+            const cap = (e.caption ?? "").trim();
+            const linkTexto = (e.linkTexto ?? "").trim();
+            let linkUrl = (e.linkUrl ?? "").trim();
+
+            // normaliza URL (evita erro se usuário não colocar https)
+            if (linkUrl && !/^https?:\/\//i.test(linkUrl)) {
+              linkUrl = "https://" + linkUrl;
+            }
+
+            const captionParts: string[] = [];
+
+            if (cap) {
+              captionParts.push(escapeHtml(cap));
+            }
+
+            if (linkUrl) {
+              const textoParaExibir = linkTexto || "Acessar evidência";
+
+              captionParts.push(
+                `<a href="${escapeHtml(linkUrl)}" target="_blank">
+       ${escapeHtml(textoParaExibir)}
+     </a>`,
+              );
+            }
+
+            const finalCaption =
+              captionParts.length > 0
+                ? `<figcaption>${captionParts.join("<br/>")}</figcaption>`
+                : "";
+
+            return `
+              <figure class="ev">
+                <img src="${e.dataUri}" alt="Evidência" />
+                ${finalCaption}
+              </figure>
+            `;
+          })
+          .join("")}
+      </div>`;
 
   const logoHtml = logoDataUri
     ? `<img class="logo" src="${logoDataUri}" alt="Logo" />`
@@ -209,6 +243,11 @@ export function buildOccurrencePdfHtml(args: {
       font-size: 9.5pt;
       color: #444;
       line-height: 1.25;
+    }
+    figure.ev a {
+      color: #444;
+      text-decoration: underline;
+      font-size: 9.5pt;
     }
 
   

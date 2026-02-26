@@ -83,7 +83,7 @@ async function getBrowser(): Promise<Browser> {
   const args = [
     "--disable-dev-shm-usage",
     "--disable-setuid-sandbox",
-    "--no-sandbox", // comum em deploy
+    "--no-sandbox",
     "--no-zygote",
     "--font-render-hinting=none",
   ];

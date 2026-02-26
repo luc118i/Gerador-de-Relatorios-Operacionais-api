@@ -28,6 +28,8 @@ export async function insertEvidenceRow(args: {
   sortOrder: number;
   storagePath: string;
   caption?: string | null;
+  linkTexto?: string | null;
+  linkUrl?: string | null;
 }) {
   const { data, error } = await supabaseAdmin
     .from("occurrence_evidences")
@@ -36,8 +38,12 @@ export async function insertEvidenceRow(args: {
       sort_order: args.sortOrder,
       storage_path: args.storagePath,
       caption: args.caption ?? null,
+      link_texto: args.linkTexto ?? null,
+      link_url: args.linkUrl ?? null,
     })
-    .select("id, occurrence_id, sort_order, storage_path, caption, created_at")
+    .select(
+      "id, occurrence_id, sort_order, storage_path, caption, link_texto, link_url, created_at",
+    )
     .single();
 
   if (error) throw error;
@@ -49,7 +55,9 @@ export async function listEvidencesByOccurrence(
 ): Promise<PdfEvidence[]> {
   const { data, error } = await supabaseAdmin
     .from("occurrence_evidences")
-    .select("id, sort_order, storage_path, caption, created_at")
+    .select(
+      "id, sort_order, storage_path, caption, link_texto, link_url, created_at",
+    )
     .eq("occurrence_id", occurrenceId)
     .order("sort_order", { ascending: true });
 
@@ -70,8 +78,10 @@ export async function listEvidencesByOccurrence(
   return (data ?? []).map((e: any) => ({
     id: e.id,
     storagePath: e.storage_path,
-    mimeType: null, // não existe na tabela -> inferimos no service pelo path
+    mimeType: null,
     caption: e.caption ?? null,
+    linkTexto: e.link_texto ?? null,
+    linkUrl: e.link_url ?? null,
     sortOrder: e.sort_order ?? null,
   }));
 }

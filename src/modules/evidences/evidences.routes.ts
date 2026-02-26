@@ -20,10 +20,26 @@ export function evidencesRoutes(app: Express) {
 
       if (!occurrenceId)
         return res.status(400).json({ error: "missing occurrence id" });
+
       if (!files.length)
         return res.status(400).json({ error: "no files uploaded" });
 
-      const data = await uploadEvidences({ occurrenceId, files });
+      // 👇 NOVO BLOCO
+      let metadata: any[] = [];
+      if (req.body.metadata) {
+        try {
+          metadata = JSON.parse(req.body.metadata);
+        } catch {
+          return res.status(400).json({ error: "invalid metadata json" });
+        }
+      }
+
+      const data = await uploadEvidences({
+        occurrenceId,
+        files,
+        metadata,
+      });
+
       res.json({ data, count: data.length });
     },
   );
