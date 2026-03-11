@@ -53,6 +53,9 @@ export async function insertDrivers(
 
 /** listar por dia com drivers + evidences (count) + type */
 export async function listOccurrencesByDay(date: string) {
+  const startUTC = new Date(`${date}T00:00:00`).toISOString(); // Converte para UTC
+  const endUTC = new Date(`${date}T23:59:59`).toISOString(); // Converte para UTC
+
   const { data, error } = await supabaseAdmin
     .from("occurrences")
     .select(
@@ -72,14 +75,9 @@ export async function listOccurrencesByDay(date: string) {
       occurrence_evidences (id)
     `,
     )
-    // --- ALTERAÇÃO AQUI ---
-    // Em vez de .eq("event_date", date)
-    // Filtramos o created_at entre o início e o fim do dia informado
-    .gte("created_at", `${date}T00:00:00.000Z`)
-    .lte("created_at", `${date}T23:59:59.999Z`)
-
-    // -----------------------
-    .order("created_at", { ascending: false }); // Geralmente melhor ver as últimas criadas primeiro
+    .gte("created_at", startUTC) // Utiliza UTC para a consulta
+    .lte("created_at", endUTC)
+    .order("created_at", { ascending: false });
 
   if (error) throw error;
 
