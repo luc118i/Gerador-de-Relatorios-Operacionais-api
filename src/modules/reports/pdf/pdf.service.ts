@@ -1,22 +1,31 @@
 import mime from "mime-types";
+
 import { AppError } from "./pdf.errors.js";
+import { renderTemplate } from "./utils/pdf.utils.js";
 import { getLogoDataUri } from "./pdf.assets.js";
+
 import {
   getOccurrenceForPdf,
   listDriversByOccurrence,
   listEvidencesByOccurrence,
 } from "./pdf.repo.js";
+
 import {
   downloadPrivateFileAsBuffer,
   uploadPrivatePdf,
   createSignedUrl,
   pdfExists,
 } from "./pdf.storage.js";
+
 import { buildOccurrencePdfHtml } from "./pdf.template.js";
 import { renderPdfFromHtml } from "./pdf.puppeteer.js";
+
 import type { BuildPdfResult, PdfEvidence } from "./pdf.types.js";
 
+import { buildRelatoVelocidade } from "../pdf/templates/relato.velocidade.js";
+
 const EVIDENCES_BUCKET = process.env.SUPABASE_BUCKET ?? "occurrence-evidences";
+
 const REPORTS_BUCKET = process.env.SUPABASE_REPORTS_BUCKET ?? "reports";
 
 export async function buildOccurrencePdf(args: {
@@ -33,24 +42,29 @@ export async function buildOccurrencePdf(args: {
     60,
     86400,
   );
+
   const maxPhotos = clamp(args.maxPhotos ?? 20, 1, 50);
+
+  // ---------------------------------------------------------------------------
+  // 1. Buscar dados
+  // ---------------------------------------------------------------------------
 
   const occurrence = await getOccurrenceForPdf(occurrenceId);
 
   const [drivers, evidences] = await Promise.all([
     listDriversByOccurrence(occurrenceId),
     listEvidencesByOccurrence(occurrenceId),
-  ] as const);
+  ]);
 
   if (evidences.length > maxPhotos) {
-    throw new AppError(
-      413,
-      `Limite de evidências excedido (max ${maxPhotos})`,
-      "EVIDENCES_LIMIT",
-    );
+    throw new AppError(413, "Limite de fotos excedido", "EVIDENCES_LIMIT");
   }
 
   const pdfStoragePath = `occurrences/${occurrenceId}/report.pdf`;
+
+  // ---------------------------------------------------------------------------
+  // 2. Cache do PDF
+  // ---------------------------------------------------------------------------
 
   if (!force) {
     const exists = await pdfExists(REPORTS_BUCKET, pdfStoragePath);
@@ -62,42 +76,42 @@ export async function buildOccurrencePdf(args: {
         ttlSeconds,
       );
 
-      return { pdfStoragePath, signedUrl, ttlSeconds, cached: true };
+      return {
+        pdfStoragePath,
+        signedUrl,
+        ttlSeconds,
+        cached: true,
+      };
     }
   }
 
-  const embedded = await Promise.all(
-    evidences.map(async (e: any) => {
-      const buf = await downloadPrivateFileAsBuffer(
-        EVIDENCES_BUCKET,
-        e.storagePath,
-      );
+  // ---------------------------------------------------------------------------
+  // 3. Processar evidências
+  // ---------------------------------------------------------------------------
 
-      const guessed = mime.lookup(e.storage_path || e.storagePath);
-      const mimeType =
-        e.mime_type ??
-        e.mimeType ??
-        (guessed ? String(guessed) : "application/octet-stream");
+  const embedded = await embedEvidenceImages(evidences);
 
-      const b64 = buf.toString("base64");
+  // ---------------------------------------------------------------------------
+  // 4. Construir texto do relato
+  // ---------------------------------------------------------------------------
 
-      return {
-        dataUri: `data:${mimeType};base64,${b64}`,
-        caption: e.caption ?? "",
+  const reportText = buildReportText(occurrence);
 
-        linkTexto: String(e.linkTexto || "").trim(),
-        linkUrl: String(e.linkUrl || "").trim(),
-      };
-    }),
-  );
+  // ---------------------------------------------------------------------------
+  // 5. Montar HTML
+  // ---------------------------------------------------------------------------
 
   const html = buildOccurrencePdfHtml({
     occurrence,
     drivers,
-    reportText: occurrence.reportText,
+    reportText,
     evidences: embedded,
     logoDataUri: getLogoDataUri(),
   });
+
+  // ---------------------------------------------------------------------------
+  // 6. Gerar PDF
+  // ---------------------------------------------------------------------------
 
   const pdfBuffer = await renderPdfFromHtml(html);
 
@@ -109,7 +123,107 @@ export async function buildOccurrencePdf(args: {
     ttlSeconds,
   );
 
-  return { pdfStoragePath, signedUrl, ttlSeconds, cached: false };
+  return {
+    pdfStoragePath,
+    signedUrl,
+    ttlSeconds,
+    cached: false,
+  };
+}
+
+async function embedEvidenceImages(evidences: PdfEvidence[]) {
+  return Promise.all(
+    evidences.map(async (e) => {
+      const buf = await downloadPrivateFileAsBuffer(
+        EVIDENCES_BUCKET,
+        e.storagePath,
+      );
+
+      const guessedMime = mime.lookup(e.storagePath);
+
+      const mimeType =
+        e.mimeType ??
+        (guessedMime ? String(guessedMime) : "application/octet-stream");
+
+      return {
+        dataUri: `data:${mimeType};base64,${buf.toString("base64")}`,
+        caption: e.caption ?? "",
+        linkTexto: (e.linkTexto ?? "").trim(),
+        linkUrl: (e.linkUrl ?? "").trim(),
+      };
+    }),
+  );
+}
+
+function buildReportText(occurrence: any): string {
+  const isVelocidade = occurrence.typeCode?.includes("VELOCIDADE") ?? false;
+
+  if (isVelocidade) {
+    console.log("EXTRA DA OCORRENCIA:", occurrence.extra);
+    console.log("VELOCIDADE:", occurrence.extra?.velocidade);
+
+    return buildRelatoVelocidade({
+      occurrenceType:
+        occurrence.typeCode ?? occurrence.typeTitle ?? "Excesso de Velocidade",
+
+      data: {
+        vehicleNumber: occurrence.vehicleNumber ?? "—",
+        tripDateLabel: fmtDate(occurrence.tripDate) ?? "—",
+        eventDateLabel: fmtDate(occurrence.eventDate) ?? "—",
+        horarioEvento: fmtTime(occurrence.startTime) ?? "—",
+        velocidade: occurrence.extra?.velocidade ?? "—",
+      },
+    });
+  }
+
+  const variables = {
+    vehicle_number: occurrence.vehicleNumber ?? "—",
+    event_date: fmtDate(occurrence.eventDate) ?? "—",
+    trip_date: fmtDate(occurrence.tripDate) ?? "—",
+    start_time: fmtTime(occurrence.startTime) ?? "—",
+    end_time: fmtTime(occurrence.endTime) ?? "—",
+    place: occurrence.place ?? "—",
+    base_code: occurrence.baseCode ?? "—",
+    line_label: occurrence.lineLabel ?? "—",
+  };
+
+  if (!occurrence.dailyTemplate) {
+    return "";
+  }
+
+  return renderTemplate(occurrence.dailyTemplate, variables);
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function fmtDate(iso?: string | null) {
+  if (!iso || iso === "null") {
+    return "—";
+  }
+
+  const [y, m, d] = iso.split("-");
+
+  if (!y || !m || !d) {
+    return "—";
+  }
+
+  return `${d}/${m}/${y}`;
+}
+
+function fmtTime(time?: string | null) {
+  if (!time || time === "null") {
+    return "—";
+  }
+
+  const [hh, mm] = time.split(":");
+
+  if (!hh || !mm) {
+    return "—";
+  }
+
+  return `${hh}h${mm}`;
 }
 
 function clamp(n: number, min: number, max: number) {

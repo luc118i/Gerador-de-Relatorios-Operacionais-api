@@ -1,14 +1,13 @@
+import { buildRelatoParada } from "./pdf/templates/relato.parada.js";
 import { listOccurrencesByDay } from "../occurrences/occurrences.repo.js";
 import type { DailyReportResult } from "./reports.types.js";
 
 function toBRDate(iso: string) {
-  // iso YYYY-MM-DD -> DD/MM/YYYY
   const [y, m, d] = iso.split("-");
   return `${d}/${m}/${y}`;
 }
 
 function toHhMmToHhHmm(hhmm: string) {
-  // "12:59" -> "12h59"
   return hhmm.replace(":", "h");
 }
 
@@ -18,11 +17,9 @@ function driverLine(d: any, dateDocShort: string) {
 
 function toDocShort(iso: string) {
   const [y, m, d] = iso.split("-");
-
   if (y === undefined || m === undefined || d === undefined) {
     throw new Error(`Invalid ISO date: ${iso}`);
   }
-
   return `${d}.${m}.${y.slice(2)}`;
 }
 
@@ -31,7 +28,7 @@ export async function buildDailyReport(
 ): Promise<DailyReportResult> {
   const items = await listOccurrencesByDay(date);
 
-  // padrão: relatório do dia usa a data do documento = date
+  // Gera a data do documento
   const dateDocShort = toDocShort(date);
 
   const blocks = items.map((o: any) => {
@@ -41,23 +38,26 @@ export async function buildDailyReport(
 
     const lines: string[] = [];
 
-    // 1 ou 2 motoristas
+    // Linhas de motoristas (1 ou 2)
     if (drivers[0]) lines.push(driverLine(drivers[0], dateDocShort));
     if (drivers[1]) lines.push(driverLine(drivers[1], dateDocShort));
 
+    // Relato específico da Parada
+    const relatoParada = buildRelatoParada({
+      occurrenceType: "DESCUMP_OP_PARADA_FORA",
+      data: {
+        vehicleNumber: o.vehicleNumber ?? "—",
+        tripDateLabel: toBRDate(o.tripDate ?? "Data não informada"),
+        place: o.place,
+      },
+    });
+
+    // Adicionar startTime e endTime ao trecho formatado com toHhMmToHhHmm
     lines.push(
-      `OCORRÊNCIA: DESCUMPRIMENTO OPERACIONAL / PARADA FORA DO PROGRAMADO`,
+      `Horário do evento: ${toHhMmToHhHmm(o.startTime ?? "00:00")}${o.endTime ? ` à ${toHhMmToHhHmm(o.endTime)}` : ""}.`,
     );
-    lines.push(`DATA: ${toBRDate(o.eventDate)}`);
-    lines.push(
-      `Horario do evento: ${toHhMmToHhHmm(o.startTime)} à ${toHhMmToHhHmm(o.endTime)}.`,
-    );
-    lines.push(
-      `Durante a análise das atividades do veículo de número ${o.vehicleNumber} na viagem do dia ${toBRDate(
-        o.tripDate,
-      )}, identificamos o descumprimento operacional/comercial por parte do condutor, realizando uma parada em local fora do esquema operacional.`,
-    );
-    lines.push(`-`);
+    lines.push(relatoParada);
+    lines.push("-");
 
     return lines.join("\n");
   });

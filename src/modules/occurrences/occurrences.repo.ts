@@ -220,7 +220,6 @@ export async function updateOccurrence(id: string, data: any) {
 }
 
 export async function updateOccurrenceData(id: string, data: any) {
-  // Certifique-se de que não existe NADA de "db.query" aqui dentro
   const { error } = await supabaseAdmin
     .from("occurrences")
     .update({
@@ -233,13 +232,14 @@ export async function updateOccurrenceData(id: string, data: any) {
       base_code: data.base_code,
       line_label: data.line_label,
       place: data.place,
+      details: data.details,
       pdf_url: null,
       pdf_expires_at: null,
     })
     .eq("id", id);
 
   if (error) {
-    console.error("Erro Supabase:", error.message);
+    console.error("Erro ao atualizar ocorrência no banco:", error.message);
     throw error;
   }
 }

@@ -15,7 +15,7 @@ export type PdfOccurrence = {
   typeTitle?: string | null;
   typeCode?: string | null;
 
-  eventDate: string;
+  eventDate?: string | null;
   tripDate: string;
   startTime: string;
   endTime: string;
@@ -23,9 +23,19 @@ export type PdfOccurrence = {
   vehicleNumber: string;
   baseCode: string;
   lineLabel?: string | null;
-  place: string;
+  place?: string | null;
 
-  reportText: string;
+  reportText?: string | null;
+
+  dailyTemplate?: string | null;
+
+  extra?: OccurrenceExtra | null;
+};
+
+export type OccurrenceExtra = {
+  velocidade?: string;
+  limite?: string;
+  local?: string;
 };
 
 export type PdfDriver = {

@@ -19,9 +19,11 @@ export async function getOccurrenceForPdf(
       base_code,
       line_label,
       place,
-      occurrence_types:occurrence_types (
+      details,
+      occurrence_types (
         title,
-        code
+        code,
+        daily_template
       )
     `,
     )
@@ -29,12 +31,7 @@ export async function getOccurrenceForPdf(
     .maybeSingle();
 
   if (error) {
-    console.error("[getOccurrenceForPdf] supabase error:", {
-      message: error.message,
-      details: (error as any).details,
-      hint: (error as any).hint,
-      code: (error as any).code,
-    });
+    console.error("[getOccurrenceForPdf] supabase error:", error);
     throw new AppError(
       500,
       "Falha ao buscar ocorrência",
@@ -42,30 +39,56 @@ export async function getOccurrenceForPdf(
     );
   }
 
-  if (!data)
+  if (!data) {
     throw new AppError(
       404,
       "Ocorrência não encontrada",
       "OCCURRENCE_NOT_FOUND",
     );
+  }
+
+  // normaliza details → extra
+  let extra: any = null;
+
+  if (typeof data.details === "string") {
+    try {
+      extra = JSON.parse(data.details);
+    } catch {
+      extra = null;
+    }
+  } else {
+    extra = data.details;
+  }
+
+  console.log("DEBUG OCCURRENCE DETAILS:", data.details);
+  console.log("DEBUG EXTRA PARSED:", extra);
+  console.log("DEBUG VELOCIDADE:", extra?.velocidade);
+
+  const type = (data as any).occurrence_types;
 
   return {
     id: data.id,
     typeId: data.type_id,
-    typeTitle: (data as any).occurrence_types?.title ?? null,
-    typeCode: (data as any).occurrence_types?.code ?? null,
-    eventDate: String(data.event_date),
-    tripDate: String(data.trip_date),
-    startTime: String(data.start_time),
-    endTime: String(data.end_time),
+
+    typeTitle: type?.title ?? null,
+    typeCode: type?.code ?? null,
+    dailyTemplate: type?.daily_template ?? null,
+
+    eventDate: data.event_date ?? null,
+    tripDate: data.trip_date ?? "",
+    startTime: data.start_time ?? "",
+    endTime: data.end_time ?? "",
+
     vehicleNumber: data.vehicle_number,
     baseCode: data.base_code,
-    lineLabel: data.line_label,
-    place: data.place,
+    lineLabel: data.line_label ?? null,
+    place: data.place ?? null,
+
     reportText: "",
+
+    extra,
   };
 }
-
 export async function listDriversByOccurrence(
   occurrenceId: string,
 ): Promise<PdfDriver[]> {

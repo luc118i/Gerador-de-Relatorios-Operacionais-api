@@ -7,6 +7,7 @@ import {
 } from "./occurrences.service.js";
 
 import { getOccurrenceById, updateOccurrence } from "./occurrences.repo.js";
+import { supabaseAdmin } from "../../core/infra/supabaseAdmin.js";
 
 export function occurrencesRoutes(app: Express) {
   // 1. Rota de Listagem (Mantenha apenas uma)
@@ -20,12 +21,16 @@ export function occurrencesRoutes(app: Express) {
   });
 
   // 2. Rota de Criação
+
   app.post("/occurrences", async (req, res, next) => {
     try {
       const payload = createOccurrenceSchema.parse(req.body);
+      console.log("[DEBUG] Payload validado pelo Zod:", payload);
+
       const id = await createOccurrence(payload);
       res.status(201).json({ id });
     } catch (err) {
+      console.error("[ERROR] Erro ao validar/criar ocorrência:", err);
       next(err);
     }
   });
@@ -59,5 +64,18 @@ export function occurrencesRoutes(app: Express) {
       const msg = err?.message || "Erro sem mensagem detalhada";
       res.status(500).json({ error: msg, details: err });
     }
+  });
+
+  app.get("/occurrence-types", async (req, res) => {
+    const { data, error } = await supabaseAdmin
+      .from("occurrence_types")
+      .select("id, code, title")
+      .eq("is_active", true);
+
+    if (error) {
+      return res.status(500).json({ error: error.message });
+    }
+
+    res.json({ data });
   });
 }
