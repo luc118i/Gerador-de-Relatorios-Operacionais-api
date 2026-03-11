@@ -2,7 +2,7 @@
 
 # 🚀 Gerador de Relatórios Operacionais - API
 
-Backend robusto desenvolvido em Node.js e TypeScript para gestão de ocorrências logísticas e geração automatizada de relatórios operacionais.
+Backend robusto desenvolvido em Node.js e TypeScript para gestão de ocorrencias de parada irregular (futuramente para as demais ocorrencias).
 
 ## 🛠️ Tecnologias e Ferramentas
 
