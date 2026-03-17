@@ -52,19 +52,37 @@ export async function createOccurrence(payload: any) {
     await updateOccurrenceBaseCode(id, snapshotBase);
   }
 
-  const driverSnapshot = await getDriverSnapshotByOccurrence(id);
+  const driver1Snapshot = await getDriverSnapshotByOccurrence(id, 1);
+  const driver2 = drivers.find((d) => d.position === 2);
+  const localId = await getLocalIdByNome(payload.place);
   const driverBase = await getDriverBaseById(driver1.driverId);
-  const localId = await getLocalIdByNome(payload.place); // ✅ busca o ID numérico
 
+  // motorista 1
   await notifyAppsScript({
     localId: String(localId ?? ""),
     localNome: payload.place,
     carro: payload.vehicleNumber,
-    motoristaId: driverSnapshot?.registry ?? driver1.driverId,
-    motoristaNome: driverSnapshot?.name ?? "",
-    base: driverSnapshot?.base_code || driverBase || baseCode,
+    motoristaId: driver1Snapshot?.registry ?? driver1.driverId,
+    motoristaNome: driver1Snapshot?.name ?? "",
+    base: driver1Snapshot?.base_code || driverBase || baseCode,
     dataRelatorio: payload.eventDate,
   });
+
+  // motorista 2 (se existir)
+  if (driver2) {
+    const driver2Snapshot = await getDriverSnapshotByOccurrence(id, 2);
+    const driver2Base = await getDriverBaseById(driver2.driverId);
+
+    await notifyAppsScript({
+      localId: String(localId ?? ""),
+      localNome: payload.place,
+      carro: payload.vehicleNumber,
+      motoristaId: driver2Snapshot?.registry ?? driver2.driverId,
+      motoristaNome: driver2Snapshot?.name ?? "",
+      base: driver2Snapshot?.base_code || driver2Base || baseCode,
+      dataRelatorio: payload.eventDate,
+    });
+  }
 
   return id;
 }

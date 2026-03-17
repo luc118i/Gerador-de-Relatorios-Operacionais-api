@@ -242,15 +242,18 @@ export async function updateOccurrenceData(id: string, data: any) {
   }
 }
 
-export async function getDriverSnapshotByOccurrence(occurrenceId: string) {
+export async function getDriverSnapshotByOccurrence(
+  occurrenceId: string,
+  position: 1 | 2 = 1, // ← padrão continua sendo 1, não quebra nada
+) {
   const { data, error } = await supabaseAdmin
     .from("occurrence_drivers")
     .select("name, registry, base_code")
     .eq("occurrence_id", occurrenceId)
-    .eq("position", 1)
+    .eq("position", position)
     .single();
 
-  if (error) throw error;
+  if (error) return null; // retorna null se não achar (motorista 2 é opcional)
   return data;
 }
 
