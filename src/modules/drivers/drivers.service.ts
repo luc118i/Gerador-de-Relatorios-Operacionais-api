@@ -1,5 +1,9 @@
-// src/modules/drivers/drivers.service.ts
-import { insertDriver, searchDrivers } from "./drivers.repo.js";
+import {
+  insertDriver,
+  searchDrivers,
+  updateDriverRepo,
+  deleteDriverRepo,
+} from "./drivers.repo.js";
 
 export async function listDrivers(args: {
   search?: string;
@@ -23,7 +27,6 @@ type InsertDriverArgs = {
   base: string | null; // base SEMPRE presente
 };
 
-// drivers.service.ts
 export async function createDriver(payload: {
   code: string;
   name: string;
@@ -36,4 +39,38 @@ export async function createDriver(payload: {
   };
 
   return insertDriver(args);
+}
+
+export async function updateDriver(
+  id: string,
+  payload: {
+    code?: string;
+    name?: string;
+    base?: string | null;
+  },
+) {
+  const args: {
+    id: string;
+    code?: string;
+    name?: string;
+    base?: string | null;
+  } = { id };
+
+  if (payload.code !== undefined) {
+    args.code = payload.code;
+  }
+  if (payload.name !== undefined) {
+    args.name = payload.name;
+  }
+  if (payload.base !== undefined) {
+    args.base = payload.base ?? null;
+  }
+
+  const updated = await updateDriverRepo(args);
+  return updated;
+}
+
+export async function deleteDriver(id: string) {
+  const deleted = await deleteDriverRepo(id);
+  return deleted;
 }

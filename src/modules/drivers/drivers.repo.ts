@@ -28,7 +28,6 @@ export async function searchDrivers(args: {
   return data ?? [];
 }
 
-// drivers.repo.ts
 export async function insertDriver(args: {
   code: string;
   name: string;
@@ -47,4 +46,41 @@ export async function insertDriver(args: {
 
   if (error) throw error;
   return data.id as string;
+}
+
+export async function updateDriverRepo(args: {
+  id: string;
+  code?: string;
+  name?: string;
+  base?: string | null;
+}) {
+  const payload: Record<string, any> = {};
+
+  if (args.code !== undefined) payload.code = args.code.trim();
+  if (args.name !== undefined) payload.name = args.name.trim();
+  if (args.base !== undefined) payload.base = args.base?.trim() || null;
+
+  const { data, error } = await supabaseAdmin
+    .from("drivers")
+    .update(payload)
+    .eq("id", args.id)
+    .select("id")
+    .single();
+
+  if (error) throw error;
+
+  return !!data;
+}
+
+export async function deleteDriverRepo(id: string) {
+  const { data, error } = await supabaseAdmin
+    .from("drivers")
+    .update({ active: false })
+    .eq("id", id)
+    .select("id")
+    .single();
+
+  if (error) throw error;
+
+  return !!data;
 }
