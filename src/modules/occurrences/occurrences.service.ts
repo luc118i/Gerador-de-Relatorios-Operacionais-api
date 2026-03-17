@@ -7,7 +7,11 @@ import {
   updateOccurrenceBaseCode,
   getDriverBaseById,
   updateOccurrenceData,
+  getDriverSnapshotByOccurrence,
+  getLocalIdByNome,
 } from "./occurrences.repo.js";
+
+import { notifyAppsScript } from "../../core/infra/appsScript.service.js";
 
 export async function createOccurrence(payload: any) {
   const typeId = await getTypeIdByCode(payload.typeCode);
@@ -48,6 +52,20 @@ export async function createOccurrence(payload: any) {
     await updateOccurrenceBaseCode(id, snapshotBase);
   }
 
+  const driverSnapshot = await getDriverSnapshotByOccurrence(id);
+  const driverBase = await getDriverBaseById(driver1.driverId);
+  const localId = await getLocalIdByNome(payload.place); // ✅ busca o ID numérico
+
+  await notifyAppsScript({
+    localId: String(localId ?? ""),
+    localNome: payload.place,
+    carro: payload.vehicleNumber,
+    motoristaId: driverSnapshot?.registry ?? driver1.driverId,
+    motoristaNome: driverSnapshot?.name ?? "",
+    base: driverSnapshot?.base_code || driverBase || baseCode,
+    dataRelatorio: payload.eventDate,
+  });
+
   return id;
 }
 
@@ -83,7 +101,6 @@ function validateDrivers(drivers: any[]) {
 }
 
 export async function updateOccurrence(id: string, payload: any) {
-  // 1. Resolvemos as dependências primeiro
   const typeId = await getTypeIdByCode(payload.typeCode);
   const drivers = validateDrivers(payload.drivers);
 
@@ -94,8 +111,6 @@ export async function updateOccurrence(id: string, payload: any) {
     payload.baseCode?.trim() || (await getDriverBaseById(driver1.driverId));
   if (!baseCode)
     throw new Error("Não foi possível derivar baseCode do Motorista 01.");
-
-  // 2. Chamada ao Repo (apenas campos que existem na tabela occurrences)
 
   await updateOccurrenceData(id, {
     type_id: typeId,
@@ -109,10 +124,8 @@ export async function updateOccurrence(id: string, payload: any) {
     place: payload.place,
   });
 
-  // 3. Atualiza motoristas (tabela separada)
   await insertDrivers(id, drivers);
 
-  // 4. Snapshot
   const snapshotBase = await getBaseCodeFromOccurrenceDriver(id);
   if (snapshotBase && snapshotBase !== baseCode) {
     await updateOccurrenceBaseCode(id, snapshotBase);

@@ -241,3 +241,26 @@ export async function updateOccurrenceData(id: string, data: any) {
     throw error;
   }
 }
+
+export async function getDriverSnapshotByOccurrence(occurrenceId: string) {
+  const { data, error } = await supabaseAdmin
+    .from("occurrence_drivers")
+    .select("name, registry, base_code")
+    .eq("occurrence_id", occurrenceId)
+    .eq("position", 1)
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function getLocalIdByNome(nome: string) {
+  const { data, error } = await supabaseAdmin
+    .from("locais")
+    .select("id")
+    .eq("nome", nome)
+    .single();
+
+  if (error) return null; // não quebra se não achar
+  return (data?.id as number) ?? null;
+}
