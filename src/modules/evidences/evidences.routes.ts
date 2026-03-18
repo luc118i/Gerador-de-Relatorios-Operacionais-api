@@ -1,6 +1,8 @@
 import type { Express } from "express";
 import multer from "multer";
 import { uploadEvidences, getEvidences } from "./evidences.service.js";
+import { getOccurrenceById } from "../occurrences/occurrences.repo.js";
+import { getSignedUrl } from "./evidences.repo.js";
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -44,6 +46,24 @@ export function evidencesRoutes(app: Express) {
     },
   );
 
+  app.get("/occurrences/:id/evidences/signed-urls", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const occ = await getOccurrenceById(id);
+
+      const urls = await Promise.all(
+        (occ.evidences ?? []).map(async (e: any) => ({
+          id: e.id,
+          url: await getSignedUrl(e.storagePath),
+          caption: e.caption ?? "",
+        })),
+      );
+
+      res.json({ data: urls });
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message ?? "Erro ao gerar URLs" });
+    }
+  });
   app.get("/occurrences/:id/evidences", async (req, res) => {
     const occurrenceId = req.params.id;
     const data = await getEvidences(occurrenceId);

@@ -6,7 +6,11 @@ import {
   getOccurrencesByDay,
 } from "./occurrences.service.js";
 
-import { getOccurrenceById, updateOccurrence } from "./occurrences.repo.js";
+import {
+  deleteOccurrence,
+  getOccurrenceById,
+  updateOccurrence,
+} from "./occurrences.repo.js";
 
 export function occurrencesRoutes(app: Express) {
   // 1. Rota de Listagem (Mantenha apenas uma)
@@ -53,11 +57,19 @@ export function occurrencesRoutes(app: Express) {
 
       res.json({ success: true });
     } catch (err: any) {
-      // Isso vai imprimir o erro completo (stack trace) no seu terminal preto do VS Code
       console.error("DEBUG - OBJETO DE ERRO COMPLETO:", err);
 
       const msg = err?.message || "Erro sem mensagem detalhada";
       res.status(500).json({ error: msg, details: err });
+    }
+  });
+
+  app.delete("/occurrences/:id", async (req, res) => {
+    try {
+      await deleteOccurrence(req.params.id);
+      res.json({ ok: true });
+    } catch (err) {
+      res.status(500).json({ error: "Erro ao deletar ocorrência" });
     }
   });
 }
