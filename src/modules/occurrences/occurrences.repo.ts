@@ -63,6 +63,7 @@ export async function listOccurrencesByDay(date: string) {
       id,
       event_date,
       trip_date,
+      trip_id, 
       start_time,
       end_time,
       vehicle_number,
@@ -87,6 +88,7 @@ export async function listOccurrencesByDay(date: string) {
     typeTitle: o.occurrence_types?.title ?? null,
     eventDate: o.event_date,
     tripDate: o.trip_date,
+    tripId: o.trip_id ?? null,
     startTime: o.start_time?.slice(0, 5),
     endTime: o.end_time?.slice(0, 5),
     vehicleNumber: o.vehicle_number,
@@ -147,6 +149,7 @@ export async function getOccurrenceById(id: string) {
       id,
       event_date,
       trip_date,
+      trip_id,
       start_time,
       end_time,
       vehicle_number,
@@ -156,7 +159,7 @@ export async function getOccurrenceById(id: string) {
       created_at,
       occurrence_types:occurrence_types (code, title),
       occurrence_drivers (position, driver_id, registry, name, base_code),
-      occurrence_evidences (id)
+      occurrence_evidences (id, storage_path, caption, sort_order)
     `,
     )
     .eq("id", id)
@@ -172,6 +175,7 @@ export async function getOccurrenceById(id: string) {
     typeTitle: o.occurrence_types?.title ?? null,
     eventDate: o.event_date,
     tripDate: o.trip_date,
+    tripId: o.trip_id ?? null,
     startTime: o.start_time?.slice(0, 5),
     endTime: o.end_time?.slice(0, 5),
     vehicleNumber: o.vehicle_number,
@@ -189,6 +193,14 @@ export async function getOccurrenceById(id: string) {
         baseCode: d.base_code,
       })),
     evidenceCount: (o.occurrence_evidences ?? []).length,
+    // ✅ evidências completas
+    evidences: (o.occurrence_evidences ?? [])
+      .sort((a: any, b: any) => a.sort_order - b.sort_order)
+      .map((e: any) => ({
+        id: e.id,
+        storagePath: e.storage_path,
+        caption: e.caption ?? "",
+      })),
   };
 }
 
@@ -218,7 +230,6 @@ export async function updateOccurrence(id: string, data: any) {
 }
 
 export async function updateOccurrenceData(id: string, data: any) {
-  // Certifique-se de que não existe NADA de "db.query" aqui dentro
   const { error } = await supabaseAdmin
     .from("occurrences")
     .update({
@@ -230,6 +241,7 @@ export async function updateOccurrenceData(id: string, data: any) {
       vehicle_number: data.vehicle_number,
       base_code: data.base_code,
       line_label: data.line_label,
+      trip_id: data.trip_id ?? null,
       place: data.place,
       pdf_url: null,
       pdf_expires_at: null,
@@ -266,4 +278,12 @@ export async function getLocalIdByNome(nome: string) {
 
   if (error) return null; // não quebra se não achar
   return (data?.id as number) ?? null;
+}
+export async function deleteOccurrence(id: string) {
+  const { error } = await supabaseAdmin
+    .from("occurrences")
+    .delete()
+    .eq("id", id);
+
+  if (error) throw error;
 }

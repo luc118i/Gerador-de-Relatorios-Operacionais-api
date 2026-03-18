@@ -23,10 +23,7 @@ export async function notifyAppsScript(payload: {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ token, ...payload }),
     });
-
-    const json = await res.json();
   } catch (err) {
-    // Não deixa falhar a criação da ocorrência por causa disso
     console.error("[AppsScript] Erro ao notificar:", err);
   }
 }

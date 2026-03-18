@@ -35,6 +35,7 @@ export async function createOccurrence(payload: any) {
     type_id: typeId,
     event_date: payload.eventDate,
     trip_date: payload.tripDate,
+    trip_id: payload.tripId ?? null,
     start_time: payload.startTime,
     end_time: payload.endTime,
     vehicle_number: payload.vehicleNumber,
@@ -132,6 +133,7 @@ export async function updateOccurrence(id: string, payload: any) {
 
   await updateOccurrenceData(id, {
     type_id: typeId,
+    trip_id: payload.tripId ?? null,
     event_date: payload.eventDate,
     trip_date: payload.tripDate,
     start_time: payload.startTime,
