@@ -2,6 +2,7 @@ import {
   getSignedUrl,
   insertEvidenceRow,
   listEvidencesByOccurrence,
+  updateEvidenceCaptionInDb,
   uploadFileToBucket,
 } from "./evidences.repo.js";
 
@@ -70,6 +71,13 @@ export async function uploadEvidences(args: {
   }
 
   return out;
+}
+
+export async function updateEvidenceCaption(
+  evidenceId: string,
+  caption: string,
+) {
+  await updateEvidenceCaptionInDb(evidenceId, caption);
 }
 
 export async function getEvidences(occurrenceId: string) {

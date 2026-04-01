@@ -41,7 +41,8 @@ export async function createOccurrence(payload: any) {
     vehicle_number: payload.vehicleNumber,
     base_code: baseCode,
     line_label: payload.lineLabel ?? null,
-    place: payload.place,
+    place: payload.place ?? "",
+    speed_kmh: payload.speedKmh ?? null,
   });
 
   // 2) cria vínculos (trigger preenche snapshot)
@@ -141,7 +142,8 @@ export async function updateOccurrence(id: string, payload: any) {
     vehicle_number: payload.vehicleNumber,
     base_code: baseCode,
     line_label: payload.lineLabel ?? null,
-    place: payload.place,
+    place: payload.place ?? "",
+    speed_kmh: payload.speedKmh ?? null,
   });
 
   await insertDrivers(id, drivers);

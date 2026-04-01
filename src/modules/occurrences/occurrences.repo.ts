@@ -63,13 +63,14 @@ export async function listOccurrencesByDay(date: string) {
       id,
       event_date,
       trip_date,
-      trip_id, 
+      trip_id,
       start_time,
       end_time,
       vehicle_number,
       base_code,
       line_label,
       place,
+      speed_kmh,
       created_at,
       occurrence_types:occurrence_types (code, title),
       occurrence_drivers (position, driver_id, registry, name, base_code),
@@ -95,6 +96,7 @@ export async function listOccurrencesByDay(date: string) {
     baseCode: o.base_code,
     lineLabel: o.line_label,
     place: o.place,
+    speedKmh: o.speed_kmh ?? null,
     createdAt: o.created_at,
     drivers: (o.occurrence_drivers ?? [])
       .sort((a: any, b: any) => a.position - b.position)
@@ -156,10 +158,11 @@ export async function getOccurrenceById(id: string) {
       base_code,
       line_label,
       place,
+      speed_kmh,
       created_at,
       occurrence_types:occurrence_types (code, title),
       occurrence_drivers (position, driver_id, registry, name, base_code),
-      occurrence_evidences (id, storage_path, caption, sort_order)
+      occurrence_evidences (id, storage_path, caption, link_texto, link_url, sort_order)
     `,
     )
     .eq("id", id)
@@ -182,6 +185,7 @@ export async function getOccurrenceById(id: string) {
     baseCode: o.base_code,
     lineLabel: o.line_label,
     place: o.place,
+    speedKmh: o.speed_kmh ?? null,
     createdAt: o.created_at,
     drivers: (o.occurrence_drivers ?? [])
       .sort((a: any, b: any) => a.position - b.position)
@@ -200,6 +204,8 @@ export async function getOccurrenceById(id: string) {
         id: e.id,
         storagePath: e.storage_path,
         caption: e.caption ?? "",
+        linkTexto: e.link_texto ?? "",
+        linkUrl: e.link_url ?? "",
       })),
   };
 }
@@ -243,6 +249,7 @@ export async function updateOccurrenceData(id: string, data: any) {
       line_label: data.line_label,
       trip_id: data.trip_id ?? null,
       place: data.place,
+      speed_kmh: data.speed_kmh ?? null,
       pdf_url: null,
       pdf_expires_at: null,
     })

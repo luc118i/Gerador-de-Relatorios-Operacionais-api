@@ -20,7 +20,8 @@ export const createOccurrenceSchema = z.object({
   // ✅ necessário para derivar vehicleNumber
   tripId: z.string().optional(), // se for uuid, troque pra z.string().uuid().optional()
 
-  place: z.string().trim().min(1),
+  place: z.string().trim().optional().default(""),
+  speedKmh: z.number().int().positive().optional().nullable(),
 
   lineLabel: z.string().nullable().optional(), // opcional (se quiser)
 

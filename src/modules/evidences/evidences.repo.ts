@@ -86,6 +86,18 @@ export async function listEvidencesByOccurrence(
   }));
 }
 
+export async function updateEvidenceCaptionInDb(
+  evidenceId: string,
+  caption: string,
+) {
+  const { error } = await supabaseAdmin
+    .from("occurrence_evidences")
+    .update({ caption: caption || null })
+    .eq("id", evidenceId);
+
+  if (error) throw error;
+}
+
 export async function getSignedUrl(storagePath: string) {
   const { data, error } = await supabaseAdmin.storage
     .from(ENV.SUPABASE_BUCKET)

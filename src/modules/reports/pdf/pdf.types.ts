@@ -24,6 +24,7 @@ export type PdfOccurrence = {
   baseCode: string;
   lineLabel?: string | null;
   place: string;
+  speedKmh?: number | null;
 
   reportText: string;
 };

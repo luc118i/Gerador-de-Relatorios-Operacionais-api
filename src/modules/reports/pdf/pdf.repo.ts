@@ -19,6 +19,7 @@ export async function getOccurrenceForPdf(
       base_code,
       line_label,
       place,
+      speed_kmh,
       occurrence_types:occurrence_types (
         title,
         code
@@ -62,6 +63,7 @@ export async function getOccurrenceForPdf(
     baseCode: data.base_code,
     lineLabel: data.line_label,
     place: data.place,
+    speedKmh: (data as any).speed_kmh ?? null,
     reportText: "",
   };
 }

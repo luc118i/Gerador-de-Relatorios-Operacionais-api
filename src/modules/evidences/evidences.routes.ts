@@ -1,6 +1,10 @@
 import type { Express } from "express";
 import multer from "multer";
-import { uploadEvidences, getEvidences } from "./evidences.service.js";
+import {
+  uploadEvidences,
+  getEvidences,
+  updateEvidenceCaption,
+} from "./evidences.service.js";
 import { getOccurrenceById } from "../occurrences/occurrences.repo.js";
 import { getSignedUrl } from "./evidences.repo.js";
 
@@ -56,6 +60,8 @@ export function evidencesRoutes(app: Express) {
           id: e.id,
           url: await getSignedUrl(e.storagePath),
           caption: e.caption ?? "",
+          linkTexto: e.linkTexto ?? "",
+          linkUrl: e.linkUrl ?? "",
         })),
       );
 
@@ -64,6 +70,26 @@ export function evidencesRoutes(app: Express) {
       res.status(500).json({ error: err?.message ?? "Erro ao gerar URLs" });
     }
   });
+  app.patch(
+    "/occurrences/:id/evidences/:evidenceId",
+    async (req, res) => {
+      try {
+        const { evidenceId } = req.params;
+        const { caption } = req.body as { caption?: string };
+
+        if (caption === undefined)
+          return res.status(400).json({ error: "missing caption" });
+
+        await updateEvidenceCaption(evidenceId, caption);
+        res.json({ ok: true });
+      } catch (err: any) {
+        res
+          .status(500)
+          .json({ error: err?.message ?? "Erro ao atualizar legenda" });
+      }
+    },
+  );
+
   app.get("/occurrences/:id/evidences", async (req, res) => {
     const occurrenceId = req.params.id;
     const data = await getEvidences(occurrenceId);

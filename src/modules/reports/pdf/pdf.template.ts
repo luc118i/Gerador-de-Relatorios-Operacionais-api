@@ -11,6 +11,7 @@ export function buildOccurrencePdfHtml(args: {
   occurrence: PdfOccurrence;
   drivers: PdfDriver[];
   reportText: string;
+  reportHtml?: string; // HTML pré-construído — bypassa o escapeHtml
   evidences: EvidenceInput[];
 
   logoDataUri?: string | null;
@@ -42,13 +43,13 @@ export function buildOccurrencePdfHtml(args: {
   const tripDateLabel = fmtDateBr(occurrence.tripDate);
   const eventDateLabel = fmtDateBr(occurrence.eventDate);
 
-  // Horário do evento (sem segundos) -> 12h59 à 13h47
+  // Horário do evento (sem segundos) -> 12h59 à 13h47 (ou só 12h59 quando igual)
+  const startFmt = occurrence.startTime ? fmtTimeBr(occurrence.startTime) : null;
+  const endFmt = occurrence.endTime ? fmtTimeBr(occurrence.endTime) : null;
   const eventTimeLabel =
-    occurrence.startTime && occurrence.endTime
-      ? `${fmtTimeBr(occurrence.startTime)} à ${fmtTimeBr(occurrence.endTime)}`
-      : occurrence.startTime
-        ? fmtTimeBr(occurrence.startTime)
-        : "—";
+    startFmt && endFmt && startFmt !== endFmt
+      ? `${startFmt} à ${endFmt}`
+      : startFmt ?? "—";
 
   // ✅ Agora já suporta typeTitle/typeCode vindo do repo
   const occurrenceTitle =
@@ -57,7 +58,7 @@ export function buildOccurrencePdfHtml(args: {
   // RELATO:
   // - se vier reportText do usuário: escapa (seguro)
   // - se não vier: usa default com <strong> nas variáveis (bonito)
-  const relatoHtml = buildRelatoHtml({
+  const relatoHtml = args.reportHtml ?? buildRelatoHtml({
     reportText,
     fallbackPrefixo: occurrence.vehicleNumber,
     fallbackTripDateLabel: tripDateLabel,
