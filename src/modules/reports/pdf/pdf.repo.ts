@@ -20,6 +20,14 @@ export async function getOccurrenceForPdf(
       line_label,
       place,
       speed_kmh,
+      report_title,
+      cco_operator,
+      vehicle_km,
+      passenger_count,
+      passenger_connection,
+      relato_html,
+      devolutiva_html,
+      devolutiva_status,
       occurrence_types:occurrence_types (
         title,
         code
@@ -64,6 +72,14 @@ export async function getOccurrenceForPdf(
     lineLabel: data.line_label,
     place: data.place,
     speedKmh: (data as any).speed_kmh ?? null,
+    reportTitle: (data as any).report_title ?? null,
+    ccoOperator: (data as any).cco_operator ?? null,
+    vehicleKm: (data as any).vehicle_km ?? null,
+    passengerCount: (data as any).passenger_count ?? null,
+    passengerConnection: (data as any).passenger_connection ?? null,
+    relatoHtml: (data as any).relato_html ?? null,
+    devolutivaHtml: (data as any).devolutiva_html ?? null,
+    devolutivaStatus: (data as any).devolutiva_status ?? null,
     reportText: "",
   };
 }

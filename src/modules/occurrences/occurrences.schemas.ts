@@ -25,6 +25,16 @@ export const createOccurrenceSchema = z.object({
 
   lineLabel: z.string().nullable().optional(), // opcional (se quiser)
 
+  // Campos do tipo GENERICO (CCO)
+  reportTitle: z.string().optional().nullable(),
+  ccoOperator: z.string().optional().nullable(),
+  vehicleKm: z.number().int().nonnegative().optional().nullable(),
+  passengerCount: z.number().int().nonnegative().optional().nullable(),
+  passengerConnection: z.string().optional().nullable(),
+  relatoHtml: z.string().optional().nullable(),
+  devolutivaHtml: z.string().optional().nullable(),
+  devolutivaStatus: z.string().optional().nullable(),
+
   drivers: z
     .array(
       z.object({

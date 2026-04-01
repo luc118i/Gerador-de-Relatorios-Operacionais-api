@@ -27,6 +27,16 @@ export type PdfOccurrence = {
   speedKmh?: number | null;
 
   reportText: string;
+
+  // Campos do tipo GENERICO (CCO)
+  reportTitle?: string | null;
+  ccoOperator?: string | null;
+  vehicleKm?: number | null;
+  passengerCount?: number | null;
+  passengerConnection?: string | null;
+  relatoHtml?: string | null;
+  devolutivaHtml?: string | null;
+  devolutivaStatus?: string | null;
 };
 
 export type PdfDriver = {

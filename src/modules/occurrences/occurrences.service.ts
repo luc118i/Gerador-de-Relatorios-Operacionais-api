@@ -43,6 +43,14 @@ export async function createOccurrence(payload: any) {
     line_label: payload.lineLabel ?? null,
     place: payload.place ?? "",
     speed_kmh: payload.speedKmh ?? null,
+    report_title: payload.reportTitle ?? null,
+    cco_operator: payload.ccoOperator ?? null,
+    vehicle_km: payload.vehicleKm ?? null,
+    passenger_count: payload.passengerCount ?? null,
+    passenger_connection: payload.passengerConnection ?? null,
+    relato_html: payload.relatoHtml ?? null,
+    devolutiva_html: payload.devolutivaHtml ?? null,
+    devolutiva_status: payload.devolutivaStatus ?? null,
   });
 
   // 2) cria vínculos (trigger preenche snapshot)
@@ -144,6 +152,14 @@ export async function updateOccurrence(id: string, payload: any) {
     line_label: payload.lineLabel ?? null,
     place: payload.place ?? "",
     speed_kmh: payload.speedKmh ?? null,
+    report_title: payload.reportTitle ?? null,
+    cco_operator: payload.ccoOperator ?? null,
+    vehicle_km: payload.vehicleKm ?? null,
+    passenger_count: payload.passengerCount ?? null,
+    passenger_connection: payload.passengerConnection ?? null,
+    relato_html: payload.relatoHtml ?? null,
+    devolutiva_html: payload.devolutivaHtml ?? null,
+    devolutiva_status: payload.devolutivaStatus ?? null,
   });
 
   await insertDrivers(id, drivers);

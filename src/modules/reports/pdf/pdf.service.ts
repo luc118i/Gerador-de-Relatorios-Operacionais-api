@@ -12,7 +12,7 @@ import {
   createSignedUrl,
   pdfExists,
 } from "./pdf.storage.js";
-import { buildOccurrencePdfHtml } from "./pdf.template.js";
+import { buildOccurrencePdfHtml, buildGenericOccurrencePdfHtml } from "./pdf.template.js";
 import { renderPdfFromHtml } from "./pdf.puppeteer.js";
 import type { BuildPdfResult, PdfEvidence } from "./pdf.types.js";
 
@@ -91,16 +91,26 @@ export async function buildOccurrencePdf(args: {
     }),
   );
 
-  const reportHtml = buildReportHtml(occurrence);
-
-  const html = buildOccurrencePdfHtml({
-    occurrence,
-    drivers,
-    reportText: "",
-    ...(reportHtml !== undefined && { reportHtml }),
-    evidences: embedded,
-    logoDataUri: getLogoDataUri(),
-  });
+  // GENERICO usa template próprio
+  const html =
+    occurrence.typeCode === "GENERICO"
+      ? buildGenericOccurrencePdfHtml({
+          occurrence,
+          drivers,
+          evidences: embedded,
+          logoDataUri: getLogoDataUri(),
+        })
+      : (() => {
+          const reportHtml = buildReportHtml(occurrence);
+          return buildOccurrencePdfHtml({
+            occurrence,
+            drivers,
+            reportText: "",
+            ...(reportHtml !== undefined && { reportHtml }),
+            evidences: embedded,
+            logoDataUri: getLogoDataUri(),
+          });
+        })();
 
   const pdfBuffer = await renderPdfFromHtml(html);
 
