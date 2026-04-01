@@ -91,11 +91,13 @@ export async function buildOccurrencePdf(args: {
     }),
   );
 
+  const reportHtml = buildReportHtml(occurrence);
+
   const html = buildOccurrencePdfHtml({
     occurrence,
     drivers,
     reportText: "",
-    reportHtml: buildReportHtml(occurrence),
+    ...(reportHtml !== undefined && { reportHtml }),
     evidences: embedded,
     logoDataUri: getLogoDataUri(),
   });
@@ -152,7 +154,9 @@ function buildReportHtml(o: PdfOccurrence): string | undefined {
 
   switch (o.typeCode) {
     case "EXCESSO_VELOCIDADE": {
-      const vel = o.speedKmh ? `${o.speedKmh} km/h` : "velocidade não informada";
+      const vel = o.speedKmh
+        ? `${o.speedKmh} km/h`
+        : "velocidade não informada";
       return (
         `Em viagem realizada pelo veículo ${b(prefixo)} iniciada no dia ${b(tripDate)}, ` +
         `identificamos que o motorista excedeu o limite de velocidade pré-estabelecido por diversas vezes. ` +
