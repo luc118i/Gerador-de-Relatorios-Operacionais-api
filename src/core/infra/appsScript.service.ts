@@ -13,7 +13,7 @@ export async function notifyAppsScript(payload: {
   const token = process.env.APPS_SCRIPT_TOKEN;
 
   if (!url || !token) {
-    console.warn("[AppsScript] URL ou TOKEN não configurados, pulando.");
+    console.warn("[AppsScript] URL ou TOKEN não configurados, pulando notificação.");
     return;
   }
 
@@ -23,7 +23,34 @@ export async function notifyAppsScript(payload: {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ token, ...payload }),
     });
+
+    // Apps Script sempre retorna HTTP 200 — precisamos ler o body para detectar erros
+    const body = await res.json().catch(() => ({})) as Record<string, unknown>;
+
+    if (!res.ok) {
+      console.error(
+        `[AppsScript] HTTP ${res.status} ao notificar. Payload:`,
+        payload,
+        "Resposta:",
+        body,
+      );
+      return;
+    }
+
+    if (body?.error) {
+      console.error(
+        "[AppsScript] Apps Script retornou erro:",
+        body.error,
+        "| Payload enviado:",
+        payload,
+      );
+      return;
+    }
+
+    console.log(
+      `[AppsScript] Histórico atualizado — motorista: ${payload.motoristaNome}, local: ${payload.localNome}`,
+    );
   } catch (err) {
-    console.error("[AppsScript] Erro ao notificar:", err);
+    console.error("[AppsScript] Falha de rede ao notificar:", err, "| Payload:", payload);
   }
 }

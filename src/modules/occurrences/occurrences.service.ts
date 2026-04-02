@@ -64,13 +64,16 @@ export async function createOccurrence(payload: any) {
 
   const driver1Snapshot = await getDriverSnapshotByOccurrence(id, 1);
   const driver2 = drivers.find((d) => d.position === 2);
-  const localId = await getLocalIdByNome(payload.place);
+  const localIdNum = await getLocalIdByNome(payload.place);
+  // Se o lookup por nome não achar, usa o próprio place como identificador
+  // (evita localId="" que causa falha na validação do Apps Script)
+  const localIdStr = localIdNum ? String(localIdNum) : (payload.place || "—");
   const driverBase = await getDriverBaseById(driver1.driverId);
 
   // motorista 1
   await notifyAppsScript({
-    localId: String(localId ?? ""),
-    localNome: payload.place,
+    localId: localIdStr,
+    localNome: payload.place || "—",
     carro: payload.vehicleNumber,
     motoristaId: driver1Snapshot?.registry ?? driver1.driverId,
     motoristaNome: driver1Snapshot?.name ?? "",
@@ -84,8 +87,8 @@ export async function createOccurrence(payload: any) {
     const driver2Base = await getDriverBaseById(driver2.driverId);
 
     await notifyAppsScript({
-      localId: String(localId ?? ""),
-      localNome: payload.place,
+      localId: localIdStr,
+      localNome: payload.place || "—",
       carro: payload.vehicleNumber,
       motoristaId: driver2Snapshot?.registry ?? driver2.driverId,
       motoristaNome: driver2Snapshot?.name ?? "",
@@ -167,6 +170,38 @@ export async function updateOccurrence(id: string, payload: any) {
   const snapshotBase = await getBaseCodeFromOccurrenceDriver(id);
   if (snapshotBase && snapshotBase !== baseCode) {
     await updateOccurrenceBaseCode(id, snapshotBase);
+  }
+
+  // Notifica planilha também na edição (igual ao fluxo de criação)
+  const driver1Snapshot = await getDriverSnapshotByOccurrence(id, 1);
+  const driver2 = drivers.find((d) => d.position === 2);
+  const localIdNum = await getLocalIdByNome(payload.place);
+  const localIdStr = localIdNum ? String(localIdNum) : (payload.place || "—");
+  const driverBase = await getDriverBaseById(driver1.driverId);
+
+  await notifyAppsScript({
+    localId: localIdStr,
+    localNome: payload.place || "—",
+    carro: payload.vehicleNumber,
+    motoristaId: driver1Snapshot?.registry ?? driver1.driverId,
+    motoristaNome: driver1Snapshot?.name ?? "",
+    base: driver1Snapshot?.base_code || driverBase || baseCode,
+    dataRelatorio: payload.eventDate,
+  });
+
+  if (driver2) {
+    const driver2Snapshot = await getDriverSnapshotByOccurrence(id, 2);
+    const driver2Base = await getDriverBaseById(driver2.driverId);
+
+    await notifyAppsScript({
+      localId: localIdStr,
+      localNome: payload.place || "—",
+      carro: payload.vehicleNumber,
+      motoristaId: driver2Snapshot?.registry ?? driver2.driverId,
+      motoristaNome: driver2Snapshot?.name ?? "",
+      base: driver2Snapshot?.base_code || driver2Base || baseCode,
+      dataRelatorio: payload.eventDate,
+    });
   }
 
   return id;
