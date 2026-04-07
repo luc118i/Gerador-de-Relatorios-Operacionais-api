@@ -43,6 +43,7 @@ export async function createOccurrence(payload: any) {
     line_label: payload.lineLabel ?? null,
     place: payload.place ?? "",
     speed_kmh: payload.speedKmh ?? null,
+    trip_time: payload.tripTime ?? null,
     report_title: payload.reportTitle ?? null,
     cco_operator: payload.ccoOperator ?? null,
     vehicle_km: payload.vehicleKm ?? null,
@@ -51,6 +52,12 @@ export async function createOccurrence(payload: any) {
     relato_html: payload.relatoHtml ?? null,
     devolutiva_html: payload.devolutivaHtml ?? null,
     devolutiva_status: payload.devolutivaStatus ?? null,
+    show_section_viagem: payload.showSectionViagem ?? true,
+    show_section_identificacao: payload.showSectionIdentificacao ?? true,
+    show_section_dados: payload.showSectionDados ?? true,
+    show_section_tripulacao: payload.showSectionTripulacao ?? true,
+    show_section_passageiros: payload.showSectionPassageiros ?? true,
+    devolutiva_before_evidences: payload.devolutivaBeforeEvidences ?? false,
   });
 
   // 2) cria vínculos (trigger preenche snapshot)
@@ -62,39 +69,42 @@ export async function createOccurrence(payload: any) {
     await updateOccurrenceBaseCode(id, snapshotBase);
   }
 
-  const driver1Snapshot = await getDriverSnapshotByOccurrence(id, 1);
-  const driver2 = drivers.find((d) => d.position === 2);
-  const localIdNum = await getLocalIdByNome(payload.place);
-  // Se o lookup por nome não achar, usa o próprio place como identificador
-  // (evita localId="" que causa falha na validação do Apps Script)
-  const localIdStr = localIdNum ? String(localIdNum) : (payload.place || "—");
-  const driverBase = await getDriverBaseById(driver1.driverId);
+  // Notifica planilha apenas para ocorrências de Parada Fora do Programado
+  if (payload.typeCode === "DESCUMP_OP_PARADA_FORA") {
+    const driver1Snapshot = await getDriverSnapshotByOccurrence(id, 1);
+    const driver2 = drivers.find((d) => d.position === 2);
+    const localIdNum = await getLocalIdByNome(payload.place);
+    // Se o lookup por nome não achar, usa o próprio place como identificador
+    // (evita localId="" que causa falha na validação do Apps Script)
+    const localIdStr = localIdNum ? String(localIdNum) : (payload.place || "—");
+    const driverBase = await getDriverBaseById(driver1.driverId);
 
-  // motorista 1
-  await notifyAppsScript({
-    localId: localIdStr,
-    localNome: payload.place || "—",
-    carro: payload.vehicleNumber,
-    motoristaId: driver1Snapshot?.registry ?? driver1.driverId,
-    motoristaNome: driver1Snapshot?.name ?? "",
-    base: driver1Snapshot?.base_code || driverBase || baseCode,
-    dataRelatorio: payload.eventDate,
-  });
-
-  // motorista 2 (se existir)
-  if (driver2) {
-    const driver2Snapshot = await getDriverSnapshotByOccurrence(id, 2);
-    const driver2Base = await getDriverBaseById(driver2.driverId);
-
+    // motorista 1
     await notifyAppsScript({
       localId: localIdStr,
       localNome: payload.place || "—",
       carro: payload.vehicleNumber,
-      motoristaId: driver2Snapshot?.registry ?? driver2.driverId,
-      motoristaNome: driver2Snapshot?.name ?? "",
-      base: driver2Snapshot?.base_code || driver2Base || baseCode,
+      motoristaId: driver1Snapshot?.registry ?? driver1.driverId,
+      motoristaNome: driver1Snapshot?.name ?? "",
+      base: driver1Snapshot?.base_code || driverBase || baseCode,
       dataRelatorio: payload.eventDate,
     });
+
+    // motorista 2 (se existir)
+    if (driver2) {
+      const driver2Snapshot = await getDriverSnapshotByOccurrence(id, 2);
+      const driver2Base = await getDriverBaseById(driver2.driverId);
+
+      await notifyAppsScript({
+        localId: localIdStr,
+        localNome: payload.place || "—",
+        carro: payload.vehicleNumber,
+        motoristaId: driver2Snapshot?.registry ?? driver2.driverId,
+        motoristaNome: driver2Snapshot?.name ?? "",
+        base: driver2Snapshot?.base_code || driver2Base || baseCode,
+        dataRelatorio: payload.eventDate,
+      });
+    }
   }
 
   return id;
@@ -155,6 +165,7 @@ export async function updateOccurrence(id: string, payload: any) {
     line_label: payload.lineLabel ?? null,
     place: payload.place ?? "",
     speed_kmh: payload.speedKmh ?? null,
+    trip_time: payload.tripTime ?? null,
     report_title: payload.reportTitle ?? null,
     cco_operator: payload.ccoOperator ?? null,
     vehicle_km: payload.vehicleKm ?? null,
@@ -163,6 +174,12 @@ export async function updateOccurrence(id: string, payload: any) {
     relato_html: payload.relatoHtml ?? null,
     devolutiva_html: payload.devolutivaHtml ?? null,
     devolutiva_status: payload.devolutivaStatus ?? null,
+    show_section_viagem: payload.showSectionViagem ?? true,
+    show_section_identificacao: payload.showSectionIdentificacao ?? true,
+    show_section_dados: payload.showSectionDados ?? true,
+    show_section_tripulacao: payload.showSectionTripulacao ?? true,
+    show_section_passageiros: payload.showSectionPassageiros ?? true,
+    devolutiva_before_evidences: payload.devolutivaBeforeEvidences ?? false,
   });
 
   await insertDrivers(id, drivers);
@@ -172,36 +189,38 @@ export async function updateOccurrence(id: string, payload: any) {
     await updateOccurrenceBaseCode(id, snapshotBase);
   }
 
-  // Notifica planilha também na edição (igual ao fluxo de criação)
-  const driver1Snapshot = await getDriverSnapshotByOccurrence(id, 1);
-  const driver2 = drivers.find((d) => d.position === 2);
-  const localIdNum = await getLocalIdByNome(payload.place);
-  const localIdStr = localIdNum ? String(localIdNum) : (payload.place || "—");
-  const driverBase = await getDriverBaseById(driver1.driverId);
-
-  await notifyAppsScript({
-    localId: localIdStr,
-    localNome: payload.place || "—",
-    carro: payload.vehicleNumber,
-    motoristaId: driver1Snapshot?.registry ?? driver1.driverId,
-    motoristaNome: driver1Snapshot?.name ?? "",
-    base: driver1Snapshot?.base_code || driverBase || baseCode,
-    dataRelatorio: payload.eventDate,
-  });
-
-  if (driver2) {
-    const driver2Snapshot = await getDriverSnapshotByOccurrence(id, 2);
-    const driver2Base = await getDriverBaseById(driver2.driverId);
+  // Notifica planilha apenas para ocorrências de Parada Fora do Programado
+  if (payload.typeCode === "DESCUMP_OP_PARADA_FORA") {
+    const driver1Snapshot = await getDriverSnapshotByOccurrence(id, 1);
+    const driver2 = drivers.find((d) => d.position === 2);
+    const localIdNum = await getLocalIdByNome(payload.place);
+    const localIdStr = localIdNum ? String(localIdNum) : (payload.place || "—");
+    const driverBase = await getDriverBaseById(driver1.driverId);
 
     await notifyAppsScript({
       localId: localIdStr,
       localNome: payload.place || "—",
       carro: payload.vehicleNumber,
-      motoristaId: driver2Snapshot?.registry ?? driver2.driverId,
-      motoristaNome: driver2Snapshot?.name ?? "",
-      base: driver2Snapshot?.base_code || driver2Base || baseCode,
+      motoristaId: driver1Snapshot?.registry ?? driver1.driverId,
+      motoristaNome: driver1Snapshot?.name ?? "",
+      base: driver1Snapshot?.base_code || driverBase || baseCode,
       dataRelatorio: payload.eventDate,
     });
+
+    if (driver2) {
+      const driver2Snapshot = await getDriverSnapshotByOccurrence(id, 2);
+      const driver2Base = await getDriverBaseById(driver2.driverId);
+
+      await notifyAppsScript({
+        localId: localIdStr,
+        localNome: payload.place || "—",
+        carro: payload.vehicleNumber,
+        motoristaId: driver2Snapshot?.registry ?? driver2.driverId,
+        motoristaNome: driver2Snapshot?.name ?? "",
+        base: driver2Snapshot?.base_code || driver2Base || baseCode,
+        dataRelatorio: payload.eventDate,
+      });
+    }
   }
 
   return id;

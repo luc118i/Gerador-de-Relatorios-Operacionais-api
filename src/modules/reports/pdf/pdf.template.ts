@@ -406,6 +406,64 @@ export function buildGenericOccurrencePdfHtml(args: {
   const devolutivaHtml = occurrence.devolutivaHtml || "";
   const devolutivaStatus = occurrence.devolutivaStatus ?? null;
 
+  const showViagem              = occurrence.showSectionViagem              ?? true;
+  const showIdentificacao       = occurrence.showSectionIdentificacao       ?? true;
+  const showDados               = occurrence.showSectionDados               ?? true;
+  const showTripulacao          = occurrence.showSectionTripulacao          ?? true;
+  const showPassageiros         = occurrence.showSectionPassageiros         ?? true;
+  const devolutivaBeforeEvid    = occurrence.devolutivaBeforeEvidences      ?? false;
+
+  // ── Valores por campo: null = campo vazio → célula omitida no PDF ───────────
+  const fItinerario   = (occurrence.lineLabel        ?? "").trim() ? itinerario                                    : null;
+  const fPrefixo      = (occurrence.vehicleNumber    ?? "").trim() ? prefixo                                      : null;
+  const fHorViagem    = (occurrence.tripTime         ?? "").trim() ? escapeHtml(fmtTimeBr(occurrence.tripTime!))  : null;
+  const fMotorista1   = driver1 ? driverText(driver1) : null;
+  const fMotorista2   = driver2 ? driverText(driver2) : null;
+  const fPassCount    = occurrence.passengerCount != null           ? escapeHtml(String(occurrence.passengerCount)) : null;
+  const fPassConex    = (occurrence.passengerConnection ?? "").trim() ? passengerConnection                        : null;
+  const fCco          = (occurrence.ccoOperator      ?? "").trim() ? ccoOperator                                  : null;
+  const fKm           = occurrence.vehicleKm != null                ? escapeHtml(String(occurrence.vehicleKm))    : null;
+  const fData         = (occurrence.eventDate        ?? "").trim() ? escapeHtml(fmtDateBr(occurrence.eventDate))  : null;
+  const fHorario      = (occurrence.startTime        ?? "").trim() ? escapeHtml(fmtTimeBr(occurrence.startTime))  : null;
+  const fLocal        = (occurrence.place            ?? "").trim() ? local                                        : null;
+
+  // ── Construtores de linhas de tabela ─────────────────────────────────────────
+  const rowFull = (label: string, val: string | null): string => {
+    if (!val) return "";
+    return `<tr><td class="lbl">${label}</td><td class="val" colspan="3">${val}</td></tr>`;
+  };
+  const rowPair = (la: string, va: string | null, lb: string, vb: string | null): string => {
+    if (!va && !vb) return "";
+    if (va && vb)
+      return `<tr><td class="lbl">${la}</td><td class="val">${va}</td><td class="lbl">${lb}</td><td class="val">${vb}</td></tr>`;
+    if (va)
+      return `<tr><td class="lbl">${la}</td><td class="val" colspan="3">${va}</td></tr>`;
+    return `<tr><td class="lbl">${lb}</td><td class="val" colspan="3">${vb!}</td></tr>`;
+  };
+
+  // ── Tabela A: DADOS DA VIAGEM (viagem + tripulação + passageiros) ─────────────
+  const rowsViagem = showViagem
+    ? rowFull("Itiner&#225;rio:", fItinerario)
+      + rowPair("Prefixo do Ve&#237;culo:", fPrefixo, "Hor&#225;rio da Viagem:", fHorViagem)
+    : "";
+  const rowsTripulacao  = showTripulacao
+    ? rowPair("Motorista 01:", fMotorista1, "Motorista 02:", fMotorista2)
+    : "";
+  const rowsPassageiros = showPassageiros
+    ? rowPair("Qtd. Passageiros:", fPassCount, "Passageiros Conex&#227;o:", fPassConex)
+    : "";
+  const rowsTableViagem = rowsViagem + rowsTripulacao + rowsPassageiros;
+
+  // ── Tabela B: DADOS DA OCORRÊNCIA (identificação + dados da ocorrência) ───────
+  const rowsIdentificacao = showIdentificacao
+    ? rowPair("Operador CCO:", fCco, "KM do Ve&#237;culo:", fKm)
+    : "";
+  const rowsDados = showDados
+    ? rowPair("Data:", fData, "Hor&#225;rio:", fHorario)
+      + rowFull("Local:", fLocal)
+    : "";
+  const rowsTableDados = rowsIdentificacao + rowsDados;
+
   // Badge de status na devolutiva
   const statusBadge =
     devolutivaStatus === "RESOLVIDO"
@@ -421,7 +479,7 @@ export function buildGenericOccurrencePdfHtml(args: {
   // Evidências
   const evidenceHtml =
     evidences.length === 0
-      ? `<div class="muted-ev">Sem evidências anexadas.</div>`
+      ? `<div class="muted-ev">Sem evid&#234;ncias anexadas.</div>`
       : evidences
           .map((e) => {
             const cap = (e.caption ?? "").trim();
@@ -434,14 +492,14 @@ export function buildGenericOccurrencePdfHtml(args: {
             if (cap) captionParts.push(escapeHtml(cap));
             if (linkUrl) {
               captionParts.push(
-                `<a href="${escapeHtml(linkUrl)}" target="_blank">${escapeHtml(linkTexto || "Acessar evidência")}</a>`,
+                `<a href="${escapeHtml(linkUrl)}" target="_blank">${escapeHtml(linkTexto || "Acessar evid&#234;ncia")}</a>`,
               );
             }
             const finalCaption =
               captionParts.length > 0
                 ? `<figcaption>${captionParts.join("<br/>")}</figcaption>`
                 : "";
-            return `<figure class="ev"><img src="${e.dataUri}" alt="Evidência" />${finalCaption}</figure>`;
+            return `<figure class="ev"><img src="${e.dataUri}" alt="Evid&#234;ncia" />${finalCaption}</figure>`;
           })
           .join("");
 
@@ -449,7 +507,7 @@ export function buildGenericOccurrencePdfHtml(args: {
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>Relatório de Ocorrência — ${reportTitle}</title>
+  <title>Relat&#243;rio de Ocorr&#234;ncia &#8212; ${reportTitle}</title>
 
   <style>
     /* ── Página ── */
@@ -563,11 +621,16 @@ export function buildGenericOccurrencePdfHtml(args: {
       background: #fff;
       width: 29%;
     }
-    /* última linha da tabela DADOS tem o Tipo em negrito */
-    table.dt td.val-bold {
-      background: #fff;
-      width: 29%;
+
+    /* ── Nome do relatório (acima do relato) ── */
+    .report-title-row {
+      padding: 7px 12px;
+      font-size: 11pt;
       font-weight: 700;
+      color: #1d1d1d;
+      border-bottom: 1px solid #ddd;
+      background: #fafafa;
+      letter-spacing: 0.2px;
     }
 
     /* ── Área de texto (relato / devolutiva) ── */
@@ -639,92 +702,50 @@ export function buildGenericOccurrencePdfHtml(args: {
       </div>
       <div class="header-divider"></div>
       <div class="header-title-wrap">
-        <div class="header-main-title">RELATÓRIO DE OCORRÊNCIA</div>
+        <div class="header-main-title">RELAT&#211;RIO DE OCORR&#202;NCIA</div>
         <div class="header-sub-title">${reportTitle}</div>
       </div>
     </div>
 
-    <!-- ══ DADOS DA OCORRÊNCIA ══ -->
+    <!-- ══ DADOS DA VIAGEM (viagem + tripulação + passageiros consolidados) ══ -->
+    ${rowsTableViagem ? `
+    <div class="section">
+      <div class="section-hd">DADOS DA VIAGEM</div>
+      <table class="dt">${rowsTableViagem}</table>
+    </div>` : ""}
+
+    <!-- ══ DADOS DA OCORRÊNCIA (identificação + dados consolidados) ══ -->
+    ${rowsTableDados ? `
     <div class="section">
       <div class="section-hd">DADOS DA OCORR&#202;NCIA</div>
-      <table class="dt">
-        <tr>
-          <td class="lbl">Operador CCO:</td>
-          <td class="val">${ccoOperator}</td>
-          <td class="lbl">Data Origem:</td>
-          <td class="val">${escapeHtml(eventDateLabel)}</td>
-        </tr>
-        <tr>
-          <td class="lbl">Horário:</td>
-          <td class="val">${escapeHtml(horario)}</td>
-          <td class="lbl">Prefixo do Ve&#237;culo:</td>
-          <td class="val">${prefixo}</td>
-        </tr>
-        <tr>
-          <td class="lbl">Itiner&#225;rio:</td>
-          <td class="val">${itinerario}</td>
-          <td class="lbl">Local:</td>
-          <td class="val">${local}</td>
-        </tr>
-        <tr>
-          <td class="lbl">KM do Ve&#237;culo:</td>
-          <td class="val">${escapeHtml(vehicleKm)}</td>
-          <td class="lbl">Tipo de Ocorr&#234;ncia:</td>
-          <td class="val-bold">${reportTitle}</td>
-        </tr>
-      </table>
-    </div>
+      <table class="dt">${rowsTableDados}</table>
+    </div>` : ""}
 
-    <!-- ══ TRIPULAÇÃO ══ -->
-    <div class="section">
-      <div class="section-hd">TRIPULA&#199;&#195;O</div>
-      <table class="dt">
-        <tr>
-          <td class="lbl">Motorista 01:</td>
-          <td class="val">${driverText(driver1)}</td>
-          <td class="lbl">Motorista 02:</td>
-          <td class="val">${driverText(driver2)}</td>
-        </tr>
-      </table>
-    </div>
-
-    <!-- ══ PASSAGEIROS ══ -->
-    <div class="section">
-      <div class="section-hd">PASSAGEIROS</div>
-      <table class="dt">
-        <tr>
-          <td class="lbl">Qtd. Passageiros:</td>
-          <td class="val">${escapeHtml(passengerCount)}</td>
-          <td class="lbl" style="white-space:normal;">Passageiros<br/>Conex&#227;o:</td>
-          <td class="val">${passengerConnection}</td>
-        </tr>
-      </table>
-    </div>
-
-    <!-- ══ RELATO DA OCORRÊNCIA ══ -->
+    <!-- ══ RELATO DA OCORRÊNCIA — sempre visível ══ -->
     <div class="section">
       <div class="section-hd">RELATO DA OCORR&#202;NCIA</div>
+      <div class="report-title-row">${reportTitle}</div>
       <div class="text-area">${relatoHtml}</div>
     </div>
 
-    ${
-      devolutivaHtml || statusBadge
-        ? `
-    <!-- ══ DEVOLUTIVA / SOLUÇÃO ADOTADA ══ -->
+    ${devolutivaBeforeEvid && (devolutivaHtml || statusBadge) ? `
+    <!-- ══ DEVOLUTIVA / SOLUÇÃO ADOTADA (antes das evidências) ══ -->
     <div class="section">
       <div class="section-hd">DEVOLUTIVA / SOLU&#199;&#195;O ADOTADA</div>
       ${statusBadge}
       ${devolutivaHtml ? `<div class="text-area">${devolutivaHtml}</div>` : ""}
-    </div>`
-        : ""
-    }
+    </div>` : ""}
 
     <!-- ══ EVIDÊNCIAS ══ -->
-    ${
-      evidences.length > 0
-        ? `<div class="ev-section">${evidenceHtml}</div>`
-        : ""
-    }
+    ${evidences.length > 0 ? `<div class="ev-section">${evidenceHtml}</div>` : ""}
+
+    ${!devolutivaBeforeEvid && (devolutivaHtml || statusBadge) ? `
+    <!-- ══ DEVOLUTIVA / SOLUÇÃO ADOTADA (após as evidências) ══ -->
+    <div class="section">
+      <div class="section-hd">DEVOLUTIVA / SOLU&#199;&#195;O ADOTADA</div>
+      ${statusBadge}
+      ${devolutivaHtml ? `<div class="text-area">${devolutivaHtml}</div>` : ""}
+    </div>` : ""}
 
   </div><!-- /content-wrap -->
 

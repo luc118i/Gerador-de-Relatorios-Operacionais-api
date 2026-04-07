@@ -20,6 +20,7 @@ export async function getOccurrenceForPdf(
       line_label,
       place,
       speed_kmh,
+      trip_time,
       report_title,
       cco_operator,
       vehicle_km,
@@ -28,6 +29,12 @@ export async function getOccurrenceForPdf(
       relato_html,
       devolutiva_html,
       devolutiva_status,
+      show_section_viagem,
+      show_section_identificacao,
+      show_section_dados,
+      show_section_tripulacao,
+      show_section_passageiros,
+      devolutiva_before_evidences,
       occurrence_types:occurrence_types (
         title,
         code
@@ -72,6 +79,7 @@ export async function getOccurrenceForPdf(
     lineLabel: data.line_label,
     place: data.place,
     speedKmh: (data as any).speed_kmh ?? null,
+    tripTime: (data as any).trip_time ?? null,
     reportTitle: (data as any).report_title ?? null,
     ccoOperator: (data as any).cco_operator ?? null,
     vehicleKm: (data as any).vehicle_km ?? null,
@@ -80,6 +88,12 @@ export async function getOccurrenceForPdf(
     relatoHtml: (data as any).relato_html ?? null,
     devolutivaHtml: (data as any).devolutiva_html ?? null,
     devolutivaStatus: (data as any).devolutiva_status ?? null,
+    showSectionViagem: (data as any).show_section_viagem ?? true,
+    showSectionIdentificacao: (data as any).show_section_identificacao ?? true,
+    showSectionDados: (data as any).show_section_dados ?? true,
+    showSectionTripulacao: (data as any).show_section_tripulacao ?? true,
+    showSectionPassageiros: (data as any).show_section_passageiros ?? true,
+    devolutivaBeforeEvidences: (data as any).devolutiva_before_evidences ?? false,
     reportText: "",
   };
 }

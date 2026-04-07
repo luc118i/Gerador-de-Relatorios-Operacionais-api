@@ -22,6 +22,7 @@ export const createOccurrenceSchema = z.object({
 
   place: z.string().trim().optional().default(""),
   speedKmh: z.number().int().positive().optional().nullable(),
+  tripTime: z.string().nullable().optional(), // horário de partida da viagem (HH:mm)
 
   lineLabel: z.string().nullable().optional(), // opcional (se quiser)
 
@@ -34,6 +35,12 @@ export const createOccurrenceSchema = z.object({
   relatoHtml: z.string().optional().nullable(),
   devolutivaHtml: z.string().optional().nullable(),
   devolutivaStatus: z.string().optional().nullable(),
+  showSectionViagem: z.boolean().optional().default(true),
+  showSectionIdentificacao: z.boolean().optional().default(true),
+  showSectionDados: z.boolean().optional().default(true),
+  showSectionTripulacao: z.boolean().optional().default(true),
+  showSectionPassageiros: z.boolean().optional().default(true),
+  devolutivaBeforeEvidences: z.boolean().optional().default(false),
 
   drivers: z
     .array(

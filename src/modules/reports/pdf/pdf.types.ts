@@ -25,6 +25,7 @@ export type PdfOccurrence = {
   lineLabel?: string | null;
   place: string;
   speedKmh?: number | null;
+  tripTime?: string | null; // horário de partida da viagem (HH:mm)
 
   reportText: string;
 
@@ -37,6 +38,12 @@ export type PdfOccurrence = {
   relatoHtml?: string | null;
   devolutivaHtml?: string | null;
   devolutivaStatus?: string | null;
+  showSectionViagem?: boolean | null;
+  showSectionIdentificacao?: boolean | null;
+  showSectionDados?: boolean | null;
+  showSectionTripulacao?: boolean | null;
+  showSectionPassageiros?: boolean | null;
+  devolutivaBeforeEvidences?: boolean | null;
 };
 
 export type PdfDriver = {
