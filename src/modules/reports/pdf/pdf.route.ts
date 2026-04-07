@@ -64,6 +64,7 @@ export async function getOccurrencePdfHandler(req: Request, res: Response) {
         error: { code: err.code, message: err.message },
       });
     }
+    console.error("[getOccurrencePdfHandler] erro inesperado:", err);
     return res.status(500).json({
       error: { code: "INTERNAL_ERROR", message: "Erro inesperado" },
     });

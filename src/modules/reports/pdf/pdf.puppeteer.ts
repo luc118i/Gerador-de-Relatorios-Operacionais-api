@@ -95,7 +95,19 @@ export async function renderPdfFromHtml(html: string): Promise<Buffer> {
 }
 
 async function getBrowser(): Promise<Browser> {
-  if (cachedBrowser) return cachedBrowser;
+  // Se há browser em cache, verifica se ainda está vivo
+  if (cachedBrowser) {
+    try {
+      // newPage() lança se o processo já morreu
+      const probe = await cachedBrowser.newPage();
+      await probe.close();
+      return cachedBrowser;
+    } catch {
+      console.warn("[Puppeteer] browser em cache morto — reiniciando...");
+      try { await cachedBrowser.close(); } catch { /* ignora */ }
+      cachedBrowser = null;
+    }
+  }
 
   const isProd = process.env.NODE_ENV === "production";
   const args = [
@@ -109,6 +121,12 @@ async function getBrowser(): Promise<Browser> {
   cachedBrowser = await puppeteer.launch({
     headless: true,
     args: isProd ? args : [], // local Windows geralmente roda sem no-sandbox
+  });
+
+  // Remove o cache se o processo do browser encerrar inesperadamente
+  cachedBrowser.on("disconnected", () => {
+    console.warn("[Puppeteer] browser desconectado — limpando cache.");
+    cachedBrowser = null;
   });
 
   return cachedBrowser;
