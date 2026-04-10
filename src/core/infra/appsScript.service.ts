@@ -8,6 +8,7 @@ export async function notifyAppsScript(payload: {
   motoristaNome: string;
   base: string;
   dataRelatorio: string;
+  linha: string;
 }) {
   const url = process.env.APPS_SCRIPT_URL;
   const token = process.env.APPS_SCRIPT_TOKEN;

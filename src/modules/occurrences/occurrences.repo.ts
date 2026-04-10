@@ -37,6 +37,9 @@ export async function insertDrivers(
 
   if (delErr) throw delErr;
 
+  // sem motoristas (seção desabilitada) — apenas limpa e sai
+  if (drivers.length === 0) return;
+
   // insere vínculos novos (snapshots via trigger)
   const { error: insErr } = await supabaseAdmin
     .from("occurrence_drivers")
@@ -147,10 +150,10 @@ export async function getBaseCodeFromOccurrenceDriver(occurrenceId: string) {
     .select("base_code, position")
     .eq("occurrence_id", occurrenceId)
     .eq("position", 1)
-    .single();
+    .maybeSingle();
 
   if (error) throw error;
-  return (data?.base_code ?? "").trim();
+  return (data?.base_code ?? "").trim() || null;
 }
 
 export async function updateOccurrenceBaseCode(id: string, baseCode: string) {

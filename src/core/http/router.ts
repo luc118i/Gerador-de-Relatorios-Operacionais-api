@@ -5,6 +5,7 @@ import { reportsRoutes } from "../../modules/reports/reports.routes.js";
 import { evidencesRoutes } from "../../modules/evidences/evidences.routes.js";
 import { reportsPdfRoutes } from "../../modules/reports/pdf/pdf.routes.js";
 import { driversRoutes } from "../../modules/drivers/drivers.routes.js";
+import { aiRoutes } from "../../modules/ai/ai.routes.js";
 
 export function registerRoutes(app: Express) {
   occurrencesRoutes(app);
@@ -12,4 +13,5 @@ export function registerRoutes(app: Express) {
   reportsRoutes(app);
   evidencesRoutes(app);
   reportsPdfRoutes(app);
+  aiRoutes(app);
 }

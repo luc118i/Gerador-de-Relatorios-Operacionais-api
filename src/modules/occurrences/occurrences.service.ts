@@ -15,20 +15,20 @@ import { notifyAppsScript } from "../../core/infra/appsScript.service.js";
 
 export async function createOccurrence(payload: any) {
   const typeId = await getTypeIdByCode(payload.typeCode);
-  const drivers = validateDrivers(payload.drivers);
+  const tripulacaoAtiva = payload.showSectionTripulacao !== false;
+  const drivers = tripulacaoAtiva ? validateDrivers(payload.drivers) : [];
 
   const driver1 = drivers.find((d) => d.position === 1);
-  if (!driver1) {
-    throw new Error("Motorista 01 é obrigatório.");
+
+  // ✅ baseCode vem do payload OU do driver.base OU "GENERICO" quando sem tripulação
+  let baseCode = payload.baseCode?.trim() ?? "";
+  if (!baseCode && driver1) {
+    baseCode = (await getDriverBaseById(driver1.driverId)) ?? "";
   }
-
-  // ✅ baseCode vem do payload OU do driver.base
-  const baseCode =
-    payload.baseCode?.trim() || (await getDriverBaseById(driver1.driverId));
-
-  if (!baseCode) {
+  if (!baseCode && tripulacaoAtiva) {
     throw new Error("Não foi possível derivar baseCode do Motorista 01.");
   }
+  if (!baseCode) baseCode = "GENERICO";
 
   // 1) cria ocorrência já com base_code válido (não quebra NOT NULL)
   const id = await insertOccurrence({
@@ -70,14 +70,13 @@ export async function createOccurrence(payload: any) {
   }
 
   // Notifica planilha apenas para ocorrências de Parada Fora do Programado
-  if (payload.typeCode === "DESCUMP_OP_PARADA_FORA") {
+  if (payload.typeCode === "DESCUMP_OP_PARADA_FORA" && driver1) {
     const driver1Snapshot = await getDriverSnapshotByOccurrence(id, 1);
     const driver2 = drivers.find((d) => d.position === 2);
     const localIdNum = await getLocalIdByNome(payload.place);
-    // Se o lookup por nome não achar, usa o próprio place como identificador
-    // (evita localId="" que causa falha na validação do Apps Script)
     const localIdStr = localIdNum ? String(localIdNum) : (payload.place || "—");
     const driverBase = await getDriverBaseById(driver1.driverId);
+    const linhaStr = payload.tripId ?? "";
 
     // motorista 1
     await notifyAppsScript({
@@ -88,6 +87,7 @@ export async function createOccurrence(payload: any) {
       motoristaNome: driver1Snapshot?.name ?? "",
       base: driver1Snapshot?.base_code || driverBase || baseCode,
       dataRelatorio: payload.eventDate,
+      linha: linhaStr,
     });
 
     // motorista 2 (se existir)
@@ -103,6 +103,7 @@ export async function createOccurrence(payload: any) {
         motoristaNome: driver2Snapshot?.name ?? "",
         base: driver2Snapshot?.base_code || driver2Base || baseCode,
         dataRelatorio: payload.eventDate,
+        linha: linhaStr,
       });
     }
   }
@@ -143,15 +144,18 @@ function validateDrivers(drivers: any[]) {
 
 export async function updateOccurrence(id: string, payload: any) {
   const typeId = await getTypeIdByCode(payload.typeCode);
-  const drivers = validateDrivers(payload.drivers);
+  const tripulacaoAtiva = payload.showSectionTripulacao !== false;
+  const drivers = tripulacaoAtiva ? validateDrivers(payload.drivers) : [];
 
   const driver1 = drivers.find((d) => d.position === 1);
-  if (!driver1) throw new Error("Motorista 01 é obrigatório.");
 
-  const baseCode =
-    payload.baseCode?.trim() || (await getDriverBaseById(driver1.driverId));
-  if (!baseCode)
+  let baseCode = payload.baseCode?.trim() ?? "";
+  if (!baseCode && driver1) {
+    baseCode = (await getDriverBaseById(driver1.driverId)) ?? "";
+  }
+  if (!baseCode && tripulacaoAtiva)
     throw new Error("Não foi possível derivar baseCode do Motorista 01.");
+  if (!baseCode) baseCode = "GENERICO";
 
   await updateOccurrenceData(id, {
     type_id: typeId,
@@ -190,12 +194,13 @@ export async function updateOccurrence(id: string, payload: any) {
   }
 
   // Notifica planilha apenas para ocorrências de Parada Fora do Programado
-  if (payload.typeCode === "DESCUMP_OP_PARADA_FORA") {
+  if (payload.typeCode === "DESCUMP_OP_PARADA_FORA" && driver1) {
     const driver1Snapshot = await getDriverSnapshotByOccurrence(id, 1);
     const driver2 = drivers.find((d) => d.position === 2);
     const localIdNum = await getLocalIdByNome(payload.place);
     const localIdStr = localIdNum ? String(localIdNum) : (payload.place || "—");
     const driverBase = await getDriverBaseById(driver1.driverId);
+    const linhaStr = payload.tripId ?? "";
 
     await notifyAppsScript({
       localId: localIdStr,
@@ -205,6 +210,7 @@ export async function updateOccurrence(id: string, payload: any) {
       motoristaNome: driver1Snapshot?.name ?? "",
       base: driver1Snapshot?.base_code || driverBase || baseCode,
       dataRelatorio: payload.eventDate,
+      linha: linhaStr,
     });
 
     if (driver2) {
@@ -219,6 +225,7 @@ export async function updateOccurrence(id: string, payload: any) {
         motoristaNome: driver2Snapshot?.name ?? "",
         base: driver2Snapshot?.base_code || driver2Base || baseCode,
         dataRelatorio: payload.eventDate,
+        linha: linhaStr,
       });
     }
   }

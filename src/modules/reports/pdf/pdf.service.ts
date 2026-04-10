@@ -168,9 +168,9 @@ function buildReportHtml(o: PdfOccurrence): string | undefined {
         ? `${o.speedKmh} km/h`
         : "velocidade não informada";
       return (
-        `Em viagem realizada pelo veículo ${b(prefixo)} iniciada no dia ${b(tripDate)}, ` +
+        `Em viagem realizada pelo veículo ${b(prefixo)} iniciada no dia ${b(date)}, ` +
         `identificamos que o motorista excedeu o limite de velocidade pré-estabelecido por diversas vezes. ` +
-        `No dia ${b(date)}, às ${b(start)} chegou a atingir a velocidade de ${b(vel)}, ` +
+        `No dia ${b(tripDate)}, às ${b(start)} chegou a atingir a velocidade de ${b(vel)}, ` +
         `colocando em perigo não somente a própria integridade física, mas também a dos demais passageiros e usuários da rodovia.` +
         `<br/><br/>` +
         `Essa conduta irresponsável representou um potencial risco de acidente ou colisão, ` +

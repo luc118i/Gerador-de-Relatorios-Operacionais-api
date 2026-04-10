@@ -14,11 +14,12 @@ export const createOccurrenceSchema = z.object({
     .array(
       z.object({
         position: z.union([z.literal(1), z.literal(2)]),
-        registry: z.string().min(1),
-        name: z.string().min(3),
-        baseCode: z.string().min(2),
+        registry: z.string().min(1).optional(),
+        name: z.string().min(3).optional(),
+        baseCode: z.string().min(2).optional(),
+        driverId: z.string().optional(),
       }),
     )
-    .min(1)
+    .min(0)
     .max(2),
 });

@@ -49,23 +49,35 @@ export const createOccurrenceSchema = z.object({
         driverId: z.string().trim().uuid(),
       }),
     )
-    .min(1)
-    .max(2)
-    .superRefine((items, ctx) => {
-      const has1 = items.some((d) => d.position === 1);
-      if (!has1) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "Motorista 01 (position=1) é obrigatório.",
-        });
-      }
+    .min(0)
+    .max(2),
+}).superRefine((data, ctx) => {
+  const tripulacaoAtiva = data.showSectionTripulacao !== false;
+  if (!tripulacaoAtiva) return; // seção desabilitada — sem validação de motoristas
 
-      const ids = items.map((d) => d.driverId);
-      if (new Set(ids).size !== ids.length) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "Não é permitido repetir o mesmo motorista.",
-        });
-      }
-    }),
+  const has1 = data.drivers.some((d) => d.position === 1);
+  if (!has1) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["drivers"],
+      message: "Motorista 01 (position=1) é obrigatório.",
+    });
+  }
+
+  if (data.drivers.length === 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["drivers"],
+      message: "Informe pelo menos o Motorista 01.",
+    });
+  }
+
+  const ids = data.drivers.map((d) => d.driverId);
+  if (new Set(ids).size !== ids.length) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["drivers"],
+      message: "Não é permitido repetir o mesmo motorista.",
+    });
+  }
 });
