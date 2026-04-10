@@ -3,13 +3,13 @@ import type { Express } from "express";
 import { createOccurrenceSchema } from "./occurrences.schemas.js";
 import {
   createOccurrence,
+  updateOccurrence,
   getOccurrencesByDay,
 } from "./occurrences.service.js";
 
 import {
   deleteOccurrence,
   getOccurrenceById,
-  updateOccurrence,
 } from "./occurrences.repo.js";
 
 export function occurrencesRoutes(app: Express) {
@@ -49,18 +49,14 @@ export function occurrencesRoutes(app: Express) {
     }
   });
 
-  app.put("/occurrences/:id", async (req, res) => {
+  app.put("/occurrences/:id", async (req, res, next) => {
     try {
       const { id } = req.params;
-
-      await updateOccurrence(id, req.body);
-
+      const payload = createOccurrenceSchema.parse(req.body);
+      await updateOccurrence(id, payload);
       res.json({ success: true });
-    } catch (err: any) {
-      console.error("DEBUG - OBJETO DE ERRO COMPLETO:", err);
-
-      const msg = err?.message || "Erro sem mensagem detalhada";
-      res.status(500).json({ error: msg, details: err });
+    } catch (err) {
+      next(err);
     }
   });
 
