@@ -25,7 +25,7 @@ export async function renderPdfFromHtml(html: string): Promise<Buffer> {
     const page = await browser.newPage();
 
     // Se for carregar fontes remotas depois, habilite request interception/csp conforme necessário.
-    await page.setContent(html, { waitUntil: "networkidle0" });
+    await page.setContent(html, { waitUntil: "load", timeout: 30_000 });
 
     const pdf = await page.pdf({
       format: "A4",

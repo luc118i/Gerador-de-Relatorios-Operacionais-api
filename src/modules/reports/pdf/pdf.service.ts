@@ -1,4 +1,5 @@
 import mime from "mime-types";
+import sharp from "sharp";
 import { AppError } from "./pdf.errors.js";
 import { getLogoDataUri } from "./pdf.assets.js";
 import {
@@ -68,7 +69,7 @@ export async function buildOccurrencePdf(args: {
 
   const embedded = await Promise.all(
     evidences.map(async (e: any) => {
-      const buf = await downloadPrivateFileAsBuffer(
+      let buf = await downloadPrivateFileAsBuffer(
         EVIDENCES_BUCKET,
         e.storagePath,
       );
@@ -79,12 +80,24 @@ export async function buildOccurrencePdf(args: {
         e.mimeType ??
         (guessed ? String(guessed) : "application/octet-stream");
 
+      // Reduz imagens grandes antes de embutir como base64
+      // Limite: 1200px de largura, qualidade JPEG 75% — reduz drasticamente o HTML
+      if (mimeType.startsWith("image/") && !mimeType.includes("svg")) {
+        try {
+          buf = await sharp(buf)
+            .resize({ width: 1200, withoutEnlargement: true })
+            .jpeg({ quality: 75 })
+            .toBuffer();
+        } catch {
+          // mantém original se sharp falhar (ex: gif animado)
+        }
+      }
+
       const b64 = buf.toString("base64");
 
       return {
-        dataUri: `data:${mimeType};base64,${b64}`,
+        dataUri: `data:image/jpeg;base64,${b64}`,
         caption: e.caption ?? "",
-
         linkTexto: String(e.linkTexto || "").trim(),
         linkUrl: String(e.linkUrl || "").trim(),
       };
