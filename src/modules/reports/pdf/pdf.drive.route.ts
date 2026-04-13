@@ -67,6 +67,7 @@ export async function sendOccurrenceToDriveHandler(
     // Token e pasta enviados pelo frontend (fluxo OAuth do usuário)
     const accessToken: string | undefined = req.body?.accessToken;
     const folderIdFromBody: string | undefined = req.body?.folderId;
+    const fileNameOverride: string | undefined = req.body?.fileName;
 
     if (accessToken && !folderIdFromBody) {
       throw new AppError(400, "folderId é obrigatório quando accessToken é enviado", "BAD_FOLDER_ID");
@@ -91,7 +92,7 @@ export async function sendOccurrenceToDriveHandler(
       listDriversByOccurrence(occurrenceId),
     ]);
 
-    const fileName = buildFileName(occurrence, drivers);
+    const fileName = fileNameOverride || buildFileName(occurrence, drivers);
 
     // 4. Faz upload — usa token do usuário se disponível, senão service account
     const driveResult = accessToken && folderIdFromBody
