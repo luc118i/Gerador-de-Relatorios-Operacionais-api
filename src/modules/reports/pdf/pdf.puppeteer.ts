@@ -86,9 +86,11 @@ export async function renderPdfFromHtml(html: string): Promise<Buffer> {
     await page.close();
     return Buffer.from(pdf);
   } catch (e) {
+    console.error("[Puppeteer] renderPdfFromHtml falhou:", e);
+    const detail = e instanceof Error ? e.message : String(e);
     throw new AppError(
       500,
-      "Falha ao renderizar PDF (Puppeteer)",
+      `Falha ao renderizar PDF (Puppeteer): ${detail}`,
       "PUPPETEER_RENDER_FAILED",
     );
   }
@@ -115,13 +117,17 @@ async function getBrowser(): Promise<Browser> {
     "--disable-setuid-sandbox",
     "--no-sandbox",
     "--no-zygote",
+    "--single-process",
     "--font-render-hinting=none",
+    "--disable-gpu",
   ];
 
+  console.log("[Puppeteer] lançando browser. isProd:", isProd);
   cachedBrowser = await puppeteer.launch({
     headless: true,
     args: isProd ? args : [], // local Windows geralmente roda sem no-sandbox
   });
+  console.log("[Puppeteer] browser lançado com sucesso.");
 
   // Remove o cache se o processo do browser encerrar inesperadamente
   cachedBrowser.on("disconnected", () => {

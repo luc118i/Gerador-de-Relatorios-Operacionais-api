@@ -5,6 +5,7 @@ RUN apt-get update && apt-get install -y \
     wget \
     ca-certificates \
     fonts-liberation \
+    fonts-noto \
     libasound2 \
     libatk-bridge2.0-0 \
     libatk1.0-0 \
@@ -28,7 +29,10 @@ RUN apt-get update && apt-get install -y \
     libxdamage1 \
     libxext6 \
     libxfixes3 \
+    libxkbcommon0 \
     libxrandr2 \
+    libxshmfence1 \
+    libxss1 \
     xdg-utils \
     --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
