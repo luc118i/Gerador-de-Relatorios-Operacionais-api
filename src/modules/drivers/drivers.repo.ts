@@ -41,11 +41,11 @@ export async function insertDriver(args: {
       base: args.base?.trim() || null,
       active: true,
     })
-    .select("id")
+    .select("id, code, name, base, active")
     .single();
 
   if (error) throw error;
-  return data.id as string;
+  return data as { id: string; code: string; name: string; base: string | null; active: boolean };
 }
 
 export async function updateDriverRepo(args: {

@@ -22,7 +22,7 @@ export const createOccurrenceSchema = z.object({
 
   place: z.string().trim().optional().default(""),
   speedKmh: z.number().int().positive().optional().nullable(),
-  tripTime: z.string().nullable().optional(), // horário de partida da viagem (HH:mm)
+  tripTime: z.string().nullable().optional().transform((v) => v || null), // horário de partida da viagem (HH:mm)
 
   lineLabel: z.string().nullable().optional(), // opcional (se quiser)
 

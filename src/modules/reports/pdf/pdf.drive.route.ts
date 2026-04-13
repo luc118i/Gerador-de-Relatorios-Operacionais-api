@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
 import { buildOccurrencePdf } from "./pdf.service.js";
 import { downloadPrivateFileAsBuffer } from "./pdf.storage.js";
-import { uploadPdfToDrive, uploadPdfToDriveWithToken } from "./pdf.drive.js";
+import { uploadPdfToDrive, uploadPdfToDriveWithToken, upsertPdfToDriveWithToken } from "./pdf.drive.js";
 import { getOccurrenceForPdf, listDriversByOccurrence } from "./pdf.repo.js";
 import { AppError } from "./pdf.errors.js";
 import type { PdfOccurrence, PdfDriver } from "./pdf.types.js";
@@ -68,6 +68,7 @@ export async function sendOccurrenceToDriveHandler(
     const accessToken: string | undefined = req.body?.accessToken;
     const folderIdFromBody: string | undefined = req.body?.folderId;
     const fileNameOverride: string | undefined = req.body?.fileName;
+    const force: boolean = !!req.body?.force; // substitui o arquivo existente se force=true
 
     if (accessToken && !folderIdFromBody) {
       throw new AppError(400, "folderId é obrigatório quando accessToken é enviado", "BAD_FOLDER_ID");
@@ -94,9 +95,11 @@ export async function sendOccurrenceToDriveHandler(
 
     const fileName = fileNameOverride || buildFileName(occurrence, drivers);
 
-    // 4. Faz upload — usa token do usuário se disponível, senão service account
+    // 4. Faz upload — upsert (se force=true) ou create; usa token do usuário se disponível
     const driveResult = accessToken && folderIdFromBody
-      ? await uploadPdfToDriveWithToken({ pdfBuffer, fileName, folderId: folderIdFromBody, accessToken })
+      ? force
+        ? await upsertPdfToDriveWithToken({ pdfBuffer, fileName, folderId: folderIdFromBody, accessToken })
+        : await uploadPdfToDriveWithToken({ pdfBuffer, fileName, folderId: folderIdFromBody, accessToken })
       : await uploadPdfToDrive({ pdfBuffer, fileName });
 
     return res.status(200).json({

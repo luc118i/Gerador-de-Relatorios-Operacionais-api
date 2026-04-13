@@ -6,10 +6,12 @@ import { evidencesRoutes } from "../../modules/evidences/evidences.routes.js";
 import { reportsPdfRoutes } from "../../modules/reports/pdf/pdf.routes.js";
 import { driversRoutes } from "../../modules/drivers/drivers.routes.js";
 import { aiRoutes } from "../../modules/ai/ai.routes.js";
+import { tripsRoutes } from "../../modules/trips/trips.routes.js";
 
 export function registerRoutes(app: Express) {
   occurrencesRoutes(app);
   driversRoutes(app);
+  tripsRoutes(app);
   reportsRoutes(app);
   evidencesRoutes(app);
   reportsPdfRoutes(app);

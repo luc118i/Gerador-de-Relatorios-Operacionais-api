@@ -35,10 +35,16 @@ export async function createDriver(payload: {
   const args: InsertDriverArgs = {
     code: payload.code,
     name: payload.name,
-    base: payload.base ?? null, // nunca undefined
+    base: payload.base ?? null,
   };
 
-  return insertDriver(args);
+  const row = await insertDriver(args);
+  return {
+    id: row.id,
+    code: row.code,
+    name: row.name,
+    base: row.base,
+  };
 }
 
 export async function updateDriver(

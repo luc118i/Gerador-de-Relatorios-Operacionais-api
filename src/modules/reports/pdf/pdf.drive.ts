@@ -72,6 +72,54 @@ export async function uploadPdfToDriveWithToken(args: {
   return { fileId: id, fileName: args.fileName, webViewLink };
 }
 
+/**
+ * Upsert: se já existir um arquivo com o mesmo nome na pasta, atualiza o conteúdo.
+ * Caso contrário, cria um novo. Evita duplicatas após edição de ocorrências.
+ */
+export async function upsertPdfToDriveWithToken(args: {
+  pdfBuffer: Buffer;
+  fileName: string;
+  folderId: string;
+  accessToken: string;
+}): Promise<DriveUploadResult> {
+  const oauth2 = new google.auth.OAuth2();
+  oauth2.setCredentials({ access_token: args.accessToken });
+
+  const drive = google.drive({ version: "v3", auth: oauth2 });
+
+  // Escapa aspas simples no nome para a query do Drive
+  const escapedName = args.fileName.replace(/'/g, "\\'");
+
+  const searchRes = await drive.files.list({
+    q: `name='${escapedName}' and '${args.folderId}' in parents and trashed=false`,
+    fields: "files(id)",
+    spaces: "drive",
+  });
+
+  const existing = (searchRes.data.files ?? [])[0];
+
+  if (existing?.id) {
+    // Atualiza o conteúdo do arquivo existente
+    const response = await drive.files.update({
+      fileId: existing.id,
+      requestBody: { name: args.fileName },
+      media: {
+        mimeType: "application/pdf",
+        body: Readable.from(args.pdfBuffer),
+      },
+      fields: "id,webViewLink",
+    });
+
+    const { id, webViewLink } = response.data;
+    if (!id || !webViewLink) throw new Error("Atualização no Drive falhou: resposta sem ID ou link");
+
+    return { fileId: id, fileName: args.fileName, webViewLink };
+  }
+
+  // Nenhum arquivo encontrado — cria novo
+  return uploadPdfToDriveWithToken(args);
+}
+
 export async function uploadPdfToDrive(args: {
   pdfBuffer: Buffer;
   fileName: string;
