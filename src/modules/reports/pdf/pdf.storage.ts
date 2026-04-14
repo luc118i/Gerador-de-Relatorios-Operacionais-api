@@ -58,6 +58,17 @@ export async function createSignedUrl(
   return data.signedUrl;
 }
 
+/**
+ * Remove um arquivo do Storage. Ignora silenciosamente se o arquivo não existir.
+ */
+export async function deleteStorageFile(
+  bucket: string,
+  path: string,
+): Promise<void> {
+  await supabaseAdmin.storage.from(bucket).remove([path]);
+  // Não lança erro se o arquivo não existir — o objetivo é garantir que não haja cache
+}
+
 export async function pdfExists(
   bucket: string,
   path: string,

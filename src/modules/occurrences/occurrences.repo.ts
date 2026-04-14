@@ -1,5 +1,8 @@
 // occurrences.repo.ts
 import { supabaseAdmin } from "../../core/infra/supabaseAdmin.js";
+import { deleteStorageFile } from "../reports/pdf/pdf.storage.js";
+
+const REPORTS_BUCKET = process.env.SUPABASE_REPORTS_BUCKET ?? "reports";
 
 export async function getTypeIdByCode(code: string) {
   const { data, error } = await supabaseAdmin
@@ -296,6 +299,9 @@ export async function updateOccurrence(id: string, data: any) {
     console.error("Erro ao atualizar ocorrência no banco:", error.message);
     throw error;
   }
+
+  // Remove o arquivo físico do Storage para invalidar o cache do PDF
+  await deleteStorageFile(REPORTS_BUCKET, `occurrences/${id}/report.pdf`);
 }
 
 export async function updateOccurrenceData(id: string, data: any) {
@@ -337,6 +343,9 @@ export async function updateOccurrenceData(id: string, data: any) {
     console.error("Erro Supabase:", error.message);
     throw error;
   }
+
+  // Remove o arquivo físico do Storage para invalidar o cache do PDF
+  await deleteStorageFile(REPORTS_BUCKET, `occurrences/${id}/report.pdf`);
 }
 
 export async function getDriverSnapshotByOccurrence(
