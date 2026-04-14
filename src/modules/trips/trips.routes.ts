@@ -7,7 +7,9 @@ export function tripsRoutes(app: Express) {
   app.get("/trips", async (req, res, next) => {
     try {
       const parsed = listTripsSchema.parse(req.query);
-      const data = await listTrips({ search: parsed.search });
+      const params =
+        parsed.search !== undefined ? { search: parsed.search } : {};
+      const data = await listTrips(params);
       res.json({ data });
     } catch (err) {
       next(err);
