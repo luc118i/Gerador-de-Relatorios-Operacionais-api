@@ -3,6 +3,12 @@ import { AppError } from "./pdf.errors.js";
 
 let cachedBrowser: Browser | null = null;
 
+/**
+ * Serializa os renders no browser local para evitar que duas requisições
+ * simultâneas compartilhem o mesmo browser e causem race conditions.
+ */
+let renderQueue: Promise<unknown> = Promise.resolve();
+
 export async function renderPdfFromHtml(html: string): Promise<Buffer> {
   // Data/hora atual no fuso horário de Brasília, formato dd/mm/aa HH:mm
   const brDateStr = (() => {
@@ -22,10 +28,8 @@ export async function renderPdfFromHtml(html: string): Promise<Buffer> {
   const browserlessUrl = process.env.BROWSERLESS_URL;
   const htmlBytes = Buffer.byteLength(html, "utf8");
 
-  // Usa Browserless apenas para HTMLs grandes (muitas evidências pesadas).
-  // Abaixo do limite, o Chrome local é suficiente e preserva a cota do Browserless.
   const BROWSERLESS_THRESHOLD_BYTES =
-    Number(process.env.BROWSERLESS_THRESHOLD_KB ?? 1024) * 1024; // padrão: 1 MB
+    Number(process.env.BROWSERLESS_THRESHOLD_KB ?? 1024) * 1024;
 
   const isRemote = !!browserlessUrl && htmlBytes > BROWSERLESS_THRESHOLD_BYTES;
 
@@ -35,14 +39,45 @@ export async function renderPdfFromHtml(html: string): Promise<Buffer> {
     (browserlessUrl && !isRemote ? ` (abaixo do limite de ${BROWSERLESS_THRESHOLD_BYTES / 1024} KB)` : ""),
   );
 
-  // Conecta no Browserless ou lança Chrome local
-  const browser = isRemote
-    ? await connectBrowserless(browserlessUrl!)
-    : await getLocalBrowser();
+  // Browserless: cada render usa sua própria conexão isolada
+  if (isRemote) {
+    const browser = await connectBrowserless(browserlessUrl!);
+    try {
+      return await renderPage(browser, brDateStr, html);
+    } finally {
+      try { browser.disconnect(); } catch { /* ignora */ }
+    }
+  }
 
+  // Chrome local: serializa os renders para evitar instabilidade com uso concorrente
+  const job = renderQueue.then(() => renderWithLocalBrowser(brDateStr, html));
+  renderQueue = job.catch(() => {}); // não deixa a cadeia quebrar em caso de erro
+  return job;
+}
+
+// ── Render com Chrome local (com retry automático) ───────────────────────────
+
+async function renderWithLocalBrowser(brDateStr: string, html: string): Promise<Buffer> {
+  const browser = await getLocalBrowser();
   try {
-    const page = await browser.newPage();
+    return await renderPage(browser, brDateStr, html);
+  } catch (e) {
+    // Se o browser caiu no meio do render, tenta UMA vez com browser fresco
+    if (isTargetClosedError(e)) {
+      console.warn("[Puppeteer] browser caiu durante o render — tentando novamente com browser fresco...");
+      cachedBrowser = null; // garante que getLocalBrowser vai lançar um novo
+      const fresh = await getLocalBrowser();
+      return await renderPage(fresh, brDateStr, html);
+    }
+    throw e;
+  }
+}
 
+// ── Renderiza uma página e retorna o PDF ─────────────────────────────────────
+
+async function renderPage(browser: Browser, brDateStr: string, html: string): Promise<Buffer> {
+  const page = await browser.newPage();
+  try {
     await page.setContent(html, { waitUntil: "load", timeout: 30_000 });
 
     const pdf = await page.pdf({
@@ -99,26 +134,17 @@ export async function renderPdfFromHtml(html: string): Promise<Buffer> {
   `,
     });
 
-    await page.close();
     return Buffer.from(pdf);
   } catch (e) {
     console.error("[Puppeteer] renderPdfFromHtml falhou:", e);
     const detail = e instanceof Error ? e.message : String(e);
-    throw new AppError(
-      500,
-      `Falha ao renderizar PDF: ${detail}`,
-      "PUPPETEER_RENDER_FAILED",
-    );
+    throw new AppError(500, `Falha ao renderizar PDF: ${detail}`, "PUPPETEER_RENDER_FAILED");
   } finally {
-    // Browserless: desconecta sem fechar o browser remoto
-    // Local: mantém o browser em cache para reutilização
-    if (isRemote) {
-      try { browser.disconnect(); } catch { /* ignora */ }
-    }
+    await page.close().catch(() => {});
   }
 }
 
-// ── Browserless ──────────────────────────────────────────────────────────────
+// ── Browserless ───────────────────────────────────────────────────────────────
 
 async function connectBrowserless(wsEndpoint: string): Promise<Browser> {
   console.log("[Puppeteer] conectando ao Browserless...");
@@ -127,19 +153,18 @@ async function connectBrowserless(wsEndpoint: string): Promise<Browser> {
   return browser;
 }
 
-// ── Chrome local (desenvolvimento) ───────────────────────────────────────────
+// ── Chrome local (com cache) ──────────────────────────────────────────────────
 
 async function getLocalBrowser(): Promise<Browser> {
+  // Verifica se o browser em cache ainda está conectado
+  if (cachedBrowser?.isConnected()) {
+    return cachedBrowser;
+  }
+
+  // Browser morto — descarta o cache
   if (cachedBrowser) {
-    try {
-      const probe = await cachedBrowser.newPage();
-      await probe.close();
-      return cachedBrowser;
-    } catch {
-      console.warn("[Puppeteer] browser em cache morto — reiniciando...");
-      try { await cachedBrowser.close(); } catch { /* ignora */ }
-      cachedBrowser = null;
-    }
+    try { await cachedBrowser.close(); } catch { /* ignora */ }
+    cachedBrowser = null;
   }
 
   const isProd = process.env.NODE_ENV === "production";
@@ -148,7 +173,8 @@ async function getLocalBrowser(): Promise<Browser> {
     "--disable-setuid-sandbox",
     "--no-sandbox",
     "--no-zygote",
-    "--single-process",
+    // NOTA: "--single-process" foi removido — causava crashes em produção
+    // quando múltiplos renders aconteciam em sequência
     "--font-render-hinting=none",
     "--disable-gpu",
   ];
@@ -166,4 +192,13 @@ async function getLocalBrowser(): Promise<Browser> {
   });
 
   return cachedBrowser;
+}
+
+// ── Utils ─────────────────────────────────────────────────────────────────────
+
+function isTargetClosedError(e: unknown): boolean {
+  return (
+    e instanceof Error &&
+    (e.message.includes("Target closed") || e.message.includes("Protocol error"))
+  );
 }
