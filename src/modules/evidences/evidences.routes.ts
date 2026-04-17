@@ -8,18 +8,20 @@ import {
 import { getOccurrenceById } from "../occurrences/occurrences.repo.js";
 import { getSignedUrl } from "./evidences.repo.js";
 
+const MAX_FILES = 30;
+
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    files: 20,
-    fileSize: 8 * 1024 * 1024, // 8MB por arquivo (ajuste se quiser)
+    files: MAX_FILES,
+    fileSize: 8 * 1024 * 1024,
   },
 });
 
 export function evidencesRoutes(app: Express) {
   app.post(
     "/occurrences/:id/evidences",
-    upload.array("files", 20),
+    upload.array("files", MAX_FILES),
     async (req, res) => {
       const occurrenceId = String(req.params.id);
       const files = (req.files as Express.Multer.File[]) ?? [];
