@@ -13,7 +13,7 @@ import {
   createSignedUrl,
   pdfExists,
 } from "./pdf.storage.js";
-import { buildOccurrencePdfHtml, buildGenericOccurrencePdfHtml } from "./pdf.template.js";
+import { buildOccurrencePdfHtml, buildGenericOccurrencePdfHtml, buildAnaliseOpPdfHtml } from "./pdf.template.js";
 import { renderPdfFromHtml } from "./pdf.puppeteer.js";
 import type { BuildPdfResult, PdfEvidence } from "./pdf.types.js";
 
@@ -104,26 +104,31 @@ export async function buildOccurrencePdf(args: {
     }),
   );
 
-  // GENERICO usa template próprio
-  const html =
-    occurrence.typeCode === "GENERICO"
-      ? buildGenericOccurrencePdfHtml({
-          occurrence,
-          drivers,
-          evidences: embedded,
-          logoDataUri: getLogoDataUri(),
-        })
-      : (() => {
-          const reportHtml = buildReportHtml(occurrence);
-          return buildOccurrencePdfHtml({
-            occurrence,
-            drivers,
-            reportText: "",
-            ...(reportHtml !== undefined && { reportHtml }),
-            evidences: embedded,
-            logoDataUri: getLogoDataUri(),
-          });
-        })();
+  // Seleciona template pelo typeCode
+  let html: string;
+  if (occurrence.typeCode === "GENERICO") {
+    html = buildGenericOccurrencePdfHtml({
+      occurrence,
+      drivers,
+      evidences: embedded,
+      logoDataUri: getLogoDataUri(),
+    });
+  } else if (occurrence.typeCode === "ANALISE_OP") {
+    html = buildAnaliseOpPdfHtml({
+      occurrence,
+      logoDataUri: getLogoDataUri(),
+    });
+  } else {
+    const reportHtml = buildReportHtml(occurrence);
+    html = buildOccurrencePdfHtml({
+      occurrence,
+      drivers,
+      reportText: "",
+      ...(reportHtml !== undefined && { reportHtml }),
+      evidences: embedded,
+      logoDataUri: getLogoDataUri(),
+    });
+  }
 
   const pdfBuffer = await renderPdfFromHtml(html);
 

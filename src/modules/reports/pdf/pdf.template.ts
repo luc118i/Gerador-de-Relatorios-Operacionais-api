@@ -353,6 +353,230 @@ function fmtTimeBr(t: string) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Template ANALISE_OP — Análise Operacional de Viagem
+// Cabeçalho e rodapé idênticos ao GENERICO; corpo gerado pelo GAS (relatoHtml)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export function buildAnaliseOpPdfHtml(args: {
+  occurrence: import("./pdf.types.js").PdfOccurrence;
+  logoDataUri?: string | null;
+  footerCompany?: string | null;
+  footerCnpj?: string | null;
+}) {
+  const { occurrence, logoDataUri } = args;
+
+  const company = args.footerCompany ?? "KANDANGO TRANSPORTE E TURISMO LTDA";
+  const cnpj    = args.footerCnpj    ?? "03.233.439/0001-52";
+
+  const reportTitle   = escapeHtml(occurrence.reportTitle ?? "Análise Operacional de Viagem");
+  const itinerario    = escapeHtml(occurrence.lineLabel   ?? "—");
+  const prefixo       = escapeHtml(occurrence.vehicleNumber ?? "—");
+  const eventDate     = fmtDateBr(occurrence.eventDate);
+  const tripDate      = fmtDateBr(occurrence.tripDate);
+  const startFmt      = occurrence.startTime ? fmtTimeBr(occurrence.startTime) : "—";
+  const endFmt        = occurrence.endTime   ? fmtTimeBr(occurrence.endTime)   : "—";
+  const periodo       = startFmt !== endFmt  ? `${startFmt} às ${endFmt}` : startFmt;
+  const tripTimeFmt   = occurrence.tripTime  ? fmtTimeBr(occurrence.tripTime)  : null;
+
+  const relatoHtml = occurrence.relatoHtml ?? "<p><em>Sem relato registrado.</em></p>";
+
+  const logoHtml = logoDataUri
+    ? `<img class="logo" src="${logoDataUri}" alt="Logo" />`
+    : `<div class="logo-spacer"></div>`;
+
+  // ── Construtores de linhas de tabela (mesmo padrão do GENERICO) ─────────────
+  const rowFull = (label: string, val: string): string =>
+    val ? `<tr><td class="lbl">${label}</td><td class="val" colspan="3">${val}</td></tr>` : "";
+
+  const rowPair = (la: string, va: string, lb: string, vb: string): string => {
+    if (!va && !vb) return "";
+    if (va && vb)   return `<tr><td class="lbl">${la}</td><td class="val">${va}</td><td class="lbl">${lb}</td><td class="val">${vb}</td></tr>`;
+    if (va)         return `<tr><td class="lbl">${la}</td><td class="val" colspan="3">${va}</td></tr>`;
+    return              `<tr><td class="lbl">${lb}</td><td class="val" colspan="3">${vb}</td></tr>`;
+  };
+
+  const rowsViagem =
+    rowFull("Itiner&#225;rio:", itinerario) +
+    rowPair("Prefixo do Ve&#237;culo:", prefixo, "Data da Viagem:", tripDate) +
+    rowPair("Per&#237;odo:", periodo, "Data do Relat&#243;rio:", escapeHtml(fmtDateBrFromDate(new Date()))) +
+    (tripTimeFmt ? rowPair("Hor&#225;rio da Viagem:", escapeHtml(tripTimeFmt), "", "") : "");
+
+  return `<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>An&#225;lise Operacional &#8212; ${reportTitle}</title>
+
+  <style>
+    @page {
+      size: A4;
+      margin-top: 15mm;
+      margin-right: 14mm;
+      margin-left: 14mm;
+      margin-bottom: 20mm;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: "Segoe UI", Arial, Helvetica, sans-serif;
+      font-size: 10.5pt;
+      color: #111;
+      margin: 0;
+      padding: 0;
+      background: #fff;
+    }
+
+    /* ── Cabeçalho (idêntico ao GENERICO) ── */
+    .doc-header {
+      display: flex;
+      align-items: stretch;
+      margin-bottom: 12px;
+      border: 1px solid #ccc;
+    }
+    .header-logo-wrap {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 16px;
+      background: #fff;
+      min-width: 160px;
+    }
+    .logo { height: 60px; display: block; }
+    .logo-spacer { width: 120px; height: 60px; }
+    .header-divider { width: 1px; background: #ccc; flex-shrink: 0; }
+    .header-title-wrap {
+      flex: 1;
+      background: #E07B1F;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 20px;
+    }
+    .header-main-title {
+      font-size: 15pt;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: 0.8px;
+      line-height: 1.15;
+      text-align: center;
+      text-transform: uppercase;
+    }
+    .header-sub-title {
+      font-size: 9.5pt;
+      font-weight: 400;
+      color: #fff;
+      margin-top: 4px;
+      text-align: center;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    /* ── Seções ── */
+    .section {
+      margin-top: 8px;
+      border: 1px solid #bbb;
+      overflow: hidden;
+      page-break-inside: avoid;
+    }
+    .section-hd {
+      background: #1d1d1d;
+      color: #fff;
+      padding: 6px 10px;
+      font-size: 10pt;
+      font-weight: 700;
+      letter-spacing: 0.4px;
+    }
+
+    /* ── Tabela de dados da viagem ── */
+    table.dt {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 10.5pt;
+    }
+    table.dt td { border: 1px solid #ccc; padding: 6px 10px; vertical-align: middle; }
+    table.dt td.lbl { font-weight: 700; background: #FDF5EE; width: 21%; white-space: nowrap; }
+    table.dt td.val { background: #fff; width: 29%; }
+
+    /* ── Área de relato (recebe HTML gerado pelo GAS) ── */
+    .text-area {
+      padding: 12px 14px;
+      font-size: 10.5pt;
+      line-height: 1.6;
+      background: #fff;
+    }
+    .text-area table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 14px;
+      font-size: 10pt;
+    }
+    .text-area table td, .text-area table th {
+      border: 1px solid #ddd;
+      padding: 5px 8px;
+    }
+    .text-area table th { background: #f5f5f5; font-weight: 700; }
+    .text-area table tr:last-child td { border-bottom: none; }
+    .text-area h4 { margin: 0 0 8px; }
+    .text-area ul  { margin: 0 0 14px 18px; padding: 0; }
+    .text-area li  { margin-bottom: 3px; }
+    .text-area p   { margin: 0 0 8px; }
+    .text-area strong { font-weight: 700; }
+
+    /* ── Rodapé (idêntico ao GENERICO) ── */
+    .doc-footer {
+      margin-top: 18px;
+      border-top: 1.5px solid #E07B1F;
+      padding-top: 6px;
+      display: flex;
+      justify-content: space-between;
+      font-size: 8.5pt;
+      color: #555;
+    }
+    .doc-footer .left { line-height: 1.5; }
+    .doc-footer .right { text-align: right; line-height: 1.5; }
+  </style>
+</head>
+<body>
+
+  <!-- ══ CABEÇALHO ══ -->
+  <div class="doc-header">
+    <div class="header-logo-wrap">${logoHtml}</div>
+    <div class="header-divider"></div>
+    <div class="header-title-wrap">
+      <div class="header-main-title">AN&#193;LISE OPERACIONAL</div>
+      <div class="header-sub-title">Relat&#243;rio de Viagem</div>
+    </div>
+  </div>
+
+  <!-- ══ DADOS DA VIAGEM ══ -->
+  <div class="section">
+    <div class="section-hd">DADOS DA VIAGEM</div>
+    <table class="dt">${rowsViagem}</table>
+  </div>
+
+  <!-- ══ RELATO / ANÁLISE ══ -->
+  <div class="section">
+    <div class="section-hd">RELAT&#211;RIO OPERACIONAL</div>
+    <div class="text-area">${relatoHtml}</div>
+  </div>
+
+  <!-- ══ RODAPÉ ══ -->
+  <div class="doc-footer">
+    <div class="left">
+      <strong>${escapeHtml(company)}</strong><br/>
+      CNPJ: ${escapeHtml(cnpj)}
+    </div>
+    <div class="right">
+      BI Operacional &#183; Viac&#227;o Catedral<br/>
+      Controle de Ocorr&#234;ncias &#183; Sistema de An&#225;lise Interna
+    </div>
+  </div>
+
+</body>
+</html>`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Template GENERICO (CCO) — fiel ao modelo visual de Atendimento Especial
 // ─────────────────────────────────────────────────────────────────────────────
 
