@@ -560,17 +560,6 @@ export function buildAnaliseOpPdfHtml(args: {
     <div class="text-area">${relatoHtml}</div>
   </div>
 
-  <!-- ══ RODAPÉ ══ -->
-  <div class="doc-footer">
-    <div class="left">
-      <strong>${escapeHtml(company)}</strong><br/>
-      CNPJ: ${escapeHtml(cnpj)}
-    </div>
-    <div class="right">
-      BI Operacional &#183; Viac&#227;o Catedral<br/>
-      Controle de Ocorr&#234;ncias &#183; Sistema de An&#225;lise Interna
-    </div>
-  </div>
 
 </body>
 </html>`;
