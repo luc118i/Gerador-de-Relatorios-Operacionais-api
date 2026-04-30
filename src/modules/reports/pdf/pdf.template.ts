@@ -270,12 +270,12 @@ export function buildOccurrencePdfHtml(args: {
     <tr><td class="label">Veículo:</td><td class="value">${escapeHtml(occurrence.vehicleNumber)}</td></tr>
     <tr><td class="label">Motorista:</td><td class="value">${driversLines}</td></tr>
     <tr><td class="label">Data Relatório:</td><td class="value">${escapeHtml(reportDateLabel)}</td></tr>
-    <tr><td class="label">Data da viagem:</td><td class="value">${escapeHtml(eventDateLabel)}</td></tr>
+    <tr><td class="label">Data da viagem:</td><td class="value">${escapeHtml(tripDateLabel)}</td></tr>
   </table>
 
   <div class="occurrence">
     <div class="row"><span class="label2">OCORRÊNCIA:</span> ${escapeHtml(occurrenceTitle)}</div>
-    <div class="row"><span class="label2">DATA:</span> ${escapeHtml(tripDateLabel)}</div>
+    <div class="row"><span class="label2">DATA:</span> ${escapeHtml(eventDateLabel)}</div>
     <div class="row"><span class="label2">Horário do evento:</span> ${escapeHtml(eventTimeLabel)}</div>
   </div>
 
