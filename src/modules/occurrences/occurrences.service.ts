@@ -20,7 +20,7 @@ export async function createOccurrence(payload: any) {
 
   const driver1 = drivers.find((d) => d.position === 1);
 
-  // ✅ baseCode vem do payload OU do driver.base OU "GENERICO" quando sem tripulação
+  // baseCode vem do payload OU do driver.base OU "GENERICO" quando sem tripulação
   let baseCode = payload.baseCode?.trim() ?? "";
   if (!baseCode && driver1?.driverId) {
     baseCode = (await getDriverBaseById(driver1.driverId)) ?? "";

@@ -13,11 +13,20 @@ app.use(express.json());
 registerRoutes(app);
 locaisRoutes(app);
 
-// 4. Tratamento de Erros (SEMPRE DEPOIS DAS ROTAS)
-app.use(errorHandler);
+app.get("/", (_, res) =>
+  res.json({
+    name: "Gerador de Relatorios Operacionais API",
+    status: "online",
+    health: "/health",
+    docs: "http://localhost:3000",
+  }),
+);
 
 app.get("/health", (_, res) => res.json({ ok: true }));
 
+// 4. Tratamento de Erros (SEMPRE DEPOIS DAS ROTAS)
+app.use(errorHandler);
+
 app.listen(ENV.PORT, () => {
-  console.log(`🚀 API running on http://localhost:${ENV.PORT}`);
+  console.log(`API running on http://localhost:${ENV.PORT}`);
 });

@@ -278,7 +278,7 @@ export async function getOccurrenceById(id: string) {
         baseCode: d.base_code,
       })),
     evidenceCount: (o.occurrence_evidences ?? []).length,
-    // ✅ evidências completas
+    // evidências completas
     evidences: (o.occurrence_evidences ?? [])
       .sort((a: any, b: any) => a.sort_order - b.sort_order)
       .map((e: any) => ({

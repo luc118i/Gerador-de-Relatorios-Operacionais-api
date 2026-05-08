@@ -12,12 +12,12 @@ export const createOccurrenceSchema = z.object({
   startTime: z.string().regex(/^\d{2}:\d{2}$/, "startTime deve ser HH:mm"),
   endTime: z.string().regex(/^\d{2}:\d{2}$/, "endTime deve ser HH:mm"),
 
-  // ✅ derivados
+  // derivados
   vehicleNumber: z.string().trim().min(1),
 
   baseCode: z.string().trim().min(1).optional(),
 
-  // ✅ necessário para derivar vehicleNumber
+  // necessário para derivar vehicleNumber
   tripId: z.string().optional(), // se for uuid, troque pra z.string().uuid().optional()
 
   place: z.string().trim().optional().default(""),

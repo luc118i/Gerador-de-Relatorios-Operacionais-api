@@ -32,7 +32,7 @@ export function evidencesRoutes(app: Express) {
       if (!files.length)
         return res.status(400).json({ error: "no files uploaded" });
 
-      // 👇 NOVO BLOCO
+      // Metadados opcionais enviados pelo frontend
       let metadata: any[] = [];
       if (req.body.metadata) {
         try {

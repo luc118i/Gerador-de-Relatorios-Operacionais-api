@@ -51,7 +51,7 @@ export function buildOccurrencePdfHtml(args: {
       ? `${startFmt} à ${endFmt}`
       : startFmt ?? "—";
 
-  // ✅ Agora já suporta typeTitle/typeCode vindo do repo
+  // Agora já suporta typeTitle/typeCode vindo do repo
   const occurrenceTitle =
     occurrence.typeTitle ?? occurrence.typeCode ?? occurrence.typeId;
 
@@ -153,7 +153,7 @@ export function buildOccurrencePdfHtml(args: {
       flex: 1;
       text-align: center;
 
-      font-family: "Georgia", "Times New Roman", serif; /* 👈 institucional */
+      font-family: "Georgia", "Times New Roman", serif; /* institucional */
       font-size: 18pt;
       font-weight: 700;
 
