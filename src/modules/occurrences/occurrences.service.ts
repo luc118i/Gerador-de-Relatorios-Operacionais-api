@@ -121,25 +121,25 @@ function validateDrivers(drivers: any[]) {
   }
 
   const d1 = drivers.find((d) => d?.position === 1);
-  if (!d1?.driverId) throw new Error("Motorista 01 é obrigatório (driverId).");
+  if (!d1?.driverId && !d1?.name) throw new Error("Motorista 01: informe driverId ou name.");
 
   for (const d of drivers) {
     if (d.position !== 1 && d.position !== 2) {
       throw new Error("Drivers: position deve ser 1 ou 2.");
     }
-    if (!d.driverId) {
+    if (!d.driverId && !d.name) {
       throw new Error(
-        `Drivers: driverId é obrigatório (position ${d.position}).`,
+        `Drivers: informe driverId ou name (position ${d.position}).`,
       );
     }
   }
 
-  const ids = drivers.map((d) => d.driverId);
+  const ids = drivers.filter((d) => d.driverId).map((d) => d.driverId);
   if (new Set(ids).size !== ids.length) {
     throw new Error("Drivers: não pode repetir o mesmo motorista.");
   }
 
-  return drivers as Array<{ position: 1 | 2; driverId: string }>;
+  return drivers as Array<{ position: 1 | 2; driverId?: string; name?: string; registry?: string; baseCode?: string }>;
 }
 
 export async function updateOccurrence(id: string, payload: any) {

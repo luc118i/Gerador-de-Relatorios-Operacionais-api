@@ -655,9 +655,12 @@ export function buildGenericOccurrencePdfHtml(args: {
   };
 
   // ── Tabela A: DADOS DA VIAGEM (viagem + tripulação + passageiros) ─────────────
+  const fTrecho = occurrence.typeCode === "ANALISE_OP" && (occurrence.place ?? "").trim()
+    ? local : null;
   const rowsViagem = showViagem
     ? rowFull("Itiner&#225;rio:", fItinerario)
       + rowPair("Prefixo do Ve&#237;culo:", fPrefixo, "Hor&#225;rio da Viagem:", fHorViagem)
+      + rowFull("Trecho analisado:", fTrecho)
     : "";
   const rowsTripulacao  = showTripulacao
     ? rowPair("Motorista 01:", fMotorista1, "Motorista 02:", fMotorista2)

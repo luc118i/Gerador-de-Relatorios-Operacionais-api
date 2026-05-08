@@ -26,7 +26,13 @@ export async function insertOccurrence(data: any) {
   return row.id;
 }
 
-type DriverLink = { position: 1 | 2; driverId: string };
+type DriverLink = {
+  position: 1 | 2;
+  driverId?: string;
+  name?: string;
+  registry?: string;
+  baseCode?: string;
+};
 
 export async function insertDrivers(
   occurrenceId: string,
@@ -43,15 +49,24 @@ export async function insertDrivers(
   // sem motoristas (seção desabilitada) — apenas limpa e sai
   if (drivers.length === 0) return;
 
-  // insere vínculos novos (snapshots via trigger)
+  // insere vínculos: com driverId → trigger preenche snapshot; sem driverId → inline
   const { error: insErr } = await supabaseAdmin
     .from("occurrence_drivers")
     .insert(
-      drivers.map((d) => ({
-        occurrence_id: occurrenceId,
-        position: d.position,
-        driver_id: d.driverId,
-      })),
+      drivers.map((d) => {
+        const row: Record<string, unknown> = {
+          occurrence_id: occurrenceId,
+          position: d.position,
+        };
+        if (d.driverId) {
+          row.driver_id = d.driverId;
+        } else {
+          row.name      = d.name      ?? null;
+          row.registry  = d.registry  ?? null;
+          row.base_code = d.baseCode  ?? null;
+        }
+        return row;
+      }),
     );
 
   if (insErr) throw insErr;

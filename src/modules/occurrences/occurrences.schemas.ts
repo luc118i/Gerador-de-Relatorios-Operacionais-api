@@ -46,7 +46,10 @@ export const createOccurrenceSchema = z.object({
     .array(
       z.object({
         position: z.union([z.literal(1), z.literal(2)]),
-        driverId: z.string().trim().uuid(),
+        driverId: z.string().trim().uuid().optional(),
+        name:     z.string().trim().optional(),
+        registry: z.string().trim().optional(),
+        baseCode: z.string().trim().optional(),
       }),
     )
     .min(0)
@@ -55,7 +58,8 @@ export const createOccurrenceSchema = z.object({
   const tripulacaoAtiva = data.showSectionTripulacao !== false;
   if (!tripulacaoAtiva) return; // seção desabilitada — sem validação de motoristas
 
-  const has1 = data.drivers.some((d) => d.position === 1);
+  // Aceita driver com driverId (UUID) OU com name inline
+  const has1 = data.drivers.some((d) => d.position === 1 && (d.driverId || d.name));
   if (!has1) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
@@ -72,7 +76,7 @@ export const createOccurrenceSchema = z.object({
     });
   }
 
-  const ids = data.drivers.map((d) => d.driverId);
+  const ids = data.drivers.filter((d) => d.driverId).map((d) => d.driverId);
   if (new Set(ids).size !== ids.length) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
