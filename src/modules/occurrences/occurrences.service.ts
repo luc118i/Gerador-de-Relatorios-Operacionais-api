@@ -22,7 +22,7 @@ export async function createOccurrence(payload: any) {
 
   // ✅ baseCode vem do payload OU do driver.base OU "GENERICO" quando sem tripulação
   let baseCode = payload.baseCode?.trim() ?? "";
-  if (!baseCode && driver1) {
+  if (!baseCode && driver1?.driverId) {
     baseCode = (await getDriverBaseById(driver1.driverId)) ?? "";
   }
   if (!baseCode && tripulacaoAtiva) {
@@ -75,7 +75,7 @@ export async function createOccurrence(payload: any) {
     const driver2 = drivers.find((d) => d.position === 2);
     const localIdNum = await getLocalIdByNome(payload.place);
     const localIdStr = localIdNum ? String(localIdNum) : (payload.place || "—");
-    const driverBase = await getDriverBaseById(driver1.driverId);
+    const driverBase = driver1.driverId ? await getDriverBaseById(driver1.driverId) : undefined;
     const linhaStr = payload.tripId ?? "";
 
     // motorista 1
@@ -93,7 +93,7 @@ export async function createOccurrence(payload: any) {
     // motorista 2 (se existir)
     if (driver2) {
       const driver2Snapshot = await getDriverSnapshotByOccurrence(id, 2);
-      const driver2Base = await getDriverBaseById(driver2.driverId);
+      const driver2Base = driver2.driverId ? await getDriverBaseById(driver2.driverId) : undefined;
 
       await notifyAppsScript({
         localId: localIdStr,
@@ -150,7 +150,7 @@ export async function updateOccurrence(id: string, payload: any) {
   const driver1 = drivers.find((d) => d.position === 1);
 
   let baseCode = payload.baseCode?.trim() ?? "";
-  if (!baseCode && driver1) {
+  if (!baseCode && driver1?.driverId) {
     baseCode = (await getDriverBaseById(driver1.driverId)) ?? "";
   }
   if (!baseCode && tripulacaoAtiva)
@@ -199,7 +199,7 @@ export async function updateOccurrence(id: string, payload: any) {
     const driver2 = drivers.find((d) => d.position === 2);
     const localIdNum = await getLocalIdByNome(payload.place);
     const localIdStr = localIdNum ? String(localIdNum) : (payload.place || "—");
-    const driverBase = await getDriverBaseById(driver1.driverId);
+    const driverBase = driver1.driverId ? await getDriverBaseById(driver1.driverId) : undefined;
     const linhaStr = payload.tripId ?? "";
 
     await notifyAppsScript({
@@ -215,7 +215,7 @@ export async function updateOccurrence(id: string, payload: any) {
 
     if (driver2) {
       const driver2Snapshot = await getDriverSnapshotByOccurrence(id, 2);
-      const driver2Base = await getDriverBaseById(driver2.driverId);
+      const driver2Base = driver2.driverId ? await getDriverBaseById(driver2.driverId) : undefined;
 
       await notifyAppsScript({
         localId: localIdStr,
