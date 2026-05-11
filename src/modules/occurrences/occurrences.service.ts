@@ -25,6 +25,12 @@ export async function createOccurrence(payload: any) {
   if (!baseCode && driver1?.driverId) {
     baseCode = (await getDriverBaseById(driver1.driverId)) ?? "";
   }
+  if (!baseCode && driver1?.baseCode) {
+    baseCode = driver1.baseCode.trim();
+  }
+  if (!baseCode && tripulacaoAtiva && !driver1?.driverId) {
+    baseCode = "GENERICO";
+  }
   if (!baseCode && tripulacaoAtiva) {
     throw new Error("Não foi possível derivar baseCode do Motorista 01.");
   }
@@ -152,6 +158,12 @@ export async function updateOccurrence(id: string, payload: any) {
   let baseCode = payload.baseCode?.trim() ?? "";
   if (!baseCode && driver1?.driverId) {
     baseCode = (await getDriverBaseById(driver1.driverId)) ?? "";
+  }
+  if (!baseCode && driver1?.baseCode) {
+    baseCode = driver1.baseCode.trim();
+  }
+  if (!baseCode && tripulacaoAtiva && !driver1?.driverId) {
+    baseCode = "GENERICO";
   }
   if (!baseCode && tripulacaoAtiva)
     throw new Error("Não foi possível derivar baseCode do Motorista 01.");
