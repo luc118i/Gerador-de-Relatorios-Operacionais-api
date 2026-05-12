@@ -21,6 +21,7 @@ export const createOccurrenceSchema = z.object({
   tripId: z.string().optional(), // se for uuid, troque pra z.string().uuid().optional()
 
   place: z.string().trim().optional().default(""),
+  placeCode: z.string().nullable().optional(), // código numérico do local (ex: da aba LOCAIS do GAS)
   speedKmh: z.number().int().positive().optional().nullable(),
   tripTime: z.string().nullable().optional().transform((v) => v || null), // horário de partida da viagem (HH:mm)
 

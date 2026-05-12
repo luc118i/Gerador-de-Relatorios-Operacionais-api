@@ -116,8 +116,14 @@ export async function createOccurrence(payload: any) {
   if (payload.typeCode === "DESCUMP_OP_PARADA_FORA" && driver1) {
     const driver1Snapshot = await getDriverSnapshotByOccurrence(id, 1);
     const driver2 = drivers.find((d) => d.position === 2);
-    const localIdNum = await getLocalIdByNome(payload.place);
-    const localIdStr = localIdNum ? String(localIdNum) : (payload.place || "—");
+    const localIdNum = payload.placeCode
+      ? null
+      : await getLocalIdByNome(payload.place);
+    const localIdStr = payload.placeCode
+      ? String(payload.placeCode)
+      : localIdNum
+        ? String(localIdNum)
+        : "";
     const driverBase = driver1.driverId ? await getDriverBaseById(driver1.driverId) : undefined;
     const linhaStr = payload.lineLabel ?? "";
 
@@ -246,8 +252,14 @@ export async function updateOccurrence(id: string, payload: any) {
   if (payload.typeCode === "DESCUMP_OP_PARADA_FORA" && driver1) {
     const driver1Snapshot = await getDriverSnapshotByOccurrence(id, 1);
     const driver2 = drivers.find((d) => d.position === 2);
-    const localIdNum = await getLocalIdByNome(payload.place);
-    const localIdStr = localIdNum ? String(localIdNum) : (payload.place || "—");
+    const localIdNum = payload.placeCode
+      ? null
+      : await getLocalIdByNome(payload.place);
+    const localIdStr = payload.placeCode
+      ? String(payload.placeCode)
+      : localIdNum
+        ? String(localIdNum)
+        : "";
     const driverBase = driver1.driverId ? await getDriverBaseById(driver1.driverId) : undefined;
     const linhaStr = payload.lineLabel ?? "";
 
