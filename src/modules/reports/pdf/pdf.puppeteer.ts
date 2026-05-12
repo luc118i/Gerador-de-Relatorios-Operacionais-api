@@ -194,6 +194,63 @@ async function getLocalBrowser(): Promise<Browser> {
   return cachedBrowser;
 }
 
+// ── Render simples sem header/footer (ex: carta de suspensão) ────────────────
+
+export async function renderSuspensaoPdfFromHtml(html: string): Promise<Buffer> {
+  const browserlessUrl = process.env.BROWSERLESS_URL;
+  const htmlBytes = Buffer.byteLength(html, "utf8");
+  const BROWSERLESS_THRESHOLD_BYTES =
+    Number(process.env.BROWSERLESS_THRESHOLD_KB ?? 1024) * 1024;
+  const isRemote = !!browserlessUrl && htmlBytes > BROWSERLESS_THRESHOLD_BYTES;
+
+  if (isRemote) {
+    const browser = await connectBrowserless(browserlessUrl!);
+    try {
+      return await renderSimplePage(browser, html);
+    } finally {
+      try { browser.disconnect(); } catch { /* ignora */ }
+    }
+  }
+
+  const job = renderQueue.then(() => renderSimpleWithLocalBrowser(html));
+  renderQueue = job.catch(() => {});
+  return job;
+}
+
+async function renderSimpleWithLocalBrowser(html: string): Promise<Buffer> {
+  const browser = await getLocalBrowser();
+  try {
+    return await renderSimplePage(browser, html);
+  } catch (e) {
+    if (isTargetClosedError(e)) {
+      cachedBrowser = null;
+      const fresh = await getLocalBrowser();
+      return await renderSimplePage(fresh, html);
+    }
+    throw e;
+  }
+}
+
+async function renderSimplePage(browser: Browser, html: string): Promise<Buffer> {
+  const page = await browser.newPage();
+  try {
+    await page.setContent(html, { waitUntil: "load", timeout: 30_000 });
+    const pdf = await page.pdf({
+      format: "A4",
+      printBackground: true,
+      displayHeaderFooter: false,
+      margin: { top: "0", right: "0", bottom: "0", left: "0" },
+    });
+    return Buffer.from(pdf);
+  } catch (e) {
+    console.error("[Puppeteer] renderSimplePage falhou:", e);
+    const detail = e instanceof Error ? e.message : String(e);
+    throw new AppError(500, `Falha ao renderizar PDF: ${detail}`, "PUPPETEER_RENDER_FAILED");
+  } finally {
+    await page.close().catch(() => {});
+  }
+}
+
 // ── Utils ─────────────────────────────────────────────────────────────────────
 
 function isTargetClosedError(e: unknown): boolean {

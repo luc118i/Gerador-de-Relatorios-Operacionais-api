@@ -138,6 +138,50 @@ ${plain}`;
   return result;
 }
 
+export async function gerarParagrafoSuspensao(args: {
+  tipoOcorrencia: string;
+  prefixo: string;
+  linha: string;
+  local: string;
+  dataOcorrencia: string;
+  motoristaNome: string;
+}): Promise<string> {
+  const groq = getClient();
+  const { tipoOcorrencia, prefixo, linha, local, dataOcorrencia, motoristaNome } = args;
+
+  const completion = await groq.chat.completions.create({
+    model: "llama-3.3-70b-versatile",
+    messages: [
+      {
+        role: "system",
+        content:
+          "Você é um redator de documentos disciplinares de RH de uma empresa de transporte rodoviário. " +
+          "Escreva em português formal e objetivo. Nunca invente dados não fornecidos.",
+      },
+      {
+        role: "user",
+        content:
+          `Escreva APENAS UMA frase inicial para o parágrafo principal de uma carta de suspensão disciplinar. ` +
+          `A frase deve relatar objetivamente a infração cometida pelo motorista, mencionando os dados fornecidos.\n` +
+          `Dados:\n` +
+          `- Tipo de ocorrência: ${tipoOcorrencia}\n` +
+          `- Veículo (prefixo): ${prefixo}\n` +
+          `- Linha: ${linha || "não informada"}\n` +
+          `- Local/Ponto: ${local || "não informado"}\n` +
+          `- Data da ocorrência: ${dataOcorrencia}\n` +
+          `- Motorista: ${motoristaNome}\n\n` +
+          `Escreva apenas a frase, sem introdução, sem explicações adicionais. Termine com ponto final.`,
+      },
+    ],
+    temperature: 0.2,
+    max_tokens: 200,
+  });
+
+  const result = completion.choices[0]?.message?.content?.trim();
+  if (!result) throw new Error("A IA não retornou o parágrafo.");
+  return result;
+}
+
 export async function summarizeOccurrenceText(
   text: string,
   title?: string,

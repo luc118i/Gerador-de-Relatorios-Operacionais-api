@@ -19,3 +19,14 @@ export function getLogoDataUri(): string | null {
   cachedLogoDataUri = `data:image/png;base64,${b64}`;
   return cachedLogoDataUri;
 }
+
+let cachedSuspensaoLogoDataUri: string | null = null;
+
+export function getSuspensaoLogoDataUri(): string | null {
+  if (cachedSuspensaoLogoDataUri) return cachedSuspensaoLogoDataUri;
+  const logoPath = path.resolve(process.cwd(), "src/assets/suspensao-logo.png");
+  if (!fs.existsSync(logoPath)) return null;
+  const buf = fs.readFileSync(logoPath);
+  cachedSuspensaoLogoDataUri = `data:image/png;base64,${buf.toString("base64")}`;
+  return cachedSuspensaoLogoDataUri;
+}
