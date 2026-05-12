@@ -402,7 +402,7 @@ export function buildAnaliseOpPdfHtml(args: {
         if (d.code) parts.push(escapeHtml(d.code));
         parts.push(escapeHtml(d.name || "—"));
         if (d.baseCode) parts.push(escapeHtml(d.baseCode));
-        return parts.join(" — ");
+        return parts.join(" - ");
       }).join(" / ")
     : "";
 
