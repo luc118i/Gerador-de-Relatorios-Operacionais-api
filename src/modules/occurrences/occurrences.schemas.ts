@@ -54,6 +54,12 @@ export const createOccurrenceSchema = z.object({
     )
     .min(0)
     .max(2),
+
+  // Campos gerados pela análise operacional (ANALISE_OP)
+  paradasProibidas: z
+    .array(z.object({ localNome: z.string(), localCodigo: z.string().nullable().optional() }))
+    .optional(),
+  paradaForaRelatoHtml: z.string().optional().nullable(),
 }).superRefine((data, ctx) => {
   const tripulacaoAtiva = data.showSectionTripulacao !== false;
   if (!tripulacaoAtiva) return; // seção desabilitada — sem validação de motoristas
