@@ -110,7 +110,8 @@ export async function listOccurrencesByDay(date: string) {
       created_at,
       occurrence_types:occurrence_types (code, title),
       occurrence_drivers (position, driver_id, registry, name, base_code),
-      occurrence_evidences (id)
+      occurrence_evidences (id),
+      suspensoes (data_inicio, dias)
     `,
     )
     .gte("created_at", startUTC) // Utiliza UTC para a consulta
@@ -159,6 +160,11 @@ export async function listOccurrencesByDay(date: string) {
         baseCode: d.base_code,
       })),
     evidenceCount: (o.occurrence_evidences ?? []).length,
+    suspensao: (() => {
+      const arr = Array.isArray(o.suspensoes) ? o.suspensoes : [];
+      const s = arr[0] ?? null;
+      return s ? { dataInicio: s.data_inicio as string, dias: s.dias as number } : null;
+    })(),
   }));
 }
 

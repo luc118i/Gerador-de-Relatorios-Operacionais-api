@@ -8,6 +8,11 @@ import { renderPdfFromHtml } from "./pdf.puppeteer.js";
 import { gerarParagrafoSuspensao } from "../../ai/ai.service.js";
 import { findLocalById } from "../../locais/locais.repo.js";
 import type { PdfOccurrence, PdfDriver } from "./pdf.types.js";
+import { uploadPrivatePdf, createSignedUrl } from "./pdf.storage.js";
+import { upsertSuspensao, getSuspensaoByOccurrenceId } from "./suspensao.repo.js";
+
+const BUCKET = process.env.SUPABASE_REPORTS_BUCKET ?? "reports";
+const SIGNED_URL_TTL = 60 * 60 * 24 * 7; // 7 dias
 
 const BodySchema = z.object({
   dataInicioSuspensao: z
@@ -56,7 +61,6 @@ export async function getSuspensaoPdfHandler(req: Request, res: Response) {
       : (occurrence.typeTitle ?? occurrence.typeCode ?? "Ocorrência");
     const fmtDataOcorrencia = fmtDateBr(occurrence.eventDate);
 
-    // Se place for um ID numérico, resolve o nome no cadastro de locais
     const localNome = await resolveLocalNome(occurrence.place ?? "");
 
     const primeiroParagrafo = await gerarParagrafoSuspensao({
@@ -81,12 +85,14 @@ export async function getSuspensaoPdfHandler(req: Request, res: Response) {
 
     const pdfBuffer = await renderPdfFromHtml(html);
 
-    const filename = buildSuspensaoFileName(occurrence, drivers);
+    const storagePath = `suspensoes/${occurrenceId}/suspensao.pdf`;
+    await uploadPrivatePdf(BUCKET, storagePath, pdfBuffer);
+    await upsertSuspensao(occurrenceId, dataInicioSuspensao, quantidadeDias, storagePath);
 
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
-    res.setHeader("Content-Length", pdfBuffer.length);
-    return res.send(pdfBuffer);
+    const signedUrl = await createSignedUrl(BUCKET, storagePath, SIGNED_URL_TTL);
+    const filename = buildSuspensaoFileName(occurrence, drivers, tipoOcorrencia);
+
+    return res.json({ signedUrl, dataInicio: dataInicioSuspensao, dias: quantidadeDias, filename });
   } catch (err: any) {
     if (err instanceof AppError) {
       return res.status(err.status).json({
@@ -100,17 +106,54 @@ export async function getSuspensaoPdfHandler(req: Request, res: Response) {
   }
 }
 
+export async function getSuspensaoInfoHandler(req: Request, res: Response) {
+  try {
+    const occurrenceId = req.params.id;
+    if (typeof occurrenceId !== "string") {
+      throw new AppError(400, "Parâmetro :id inválido", "BAD_OCCURRENCE_ID");
+    }
+
+    const record = await getSuspensaoByOccurrenceId(occurrenceId);
+    if (!record) {
+      return res.json({ suspensao: null });
+    }
+
+    const signedUrl = await createSignedUrl(BUCKET, record.pdfPath, SIGNED_URL_TTL);
+    return res.json({
+      suspensao: { dataInicio: record.dataInicio, dias: record.dias, signedUrl },
+    });
+  } catch (err: any) {
+    if (err instanceof AppError) {
+      return res.status(err.status).json({
+        error: { code: err.code, message: err.message },
+      });
+    }
+    console.error("[getSuspensaoInfoHandler] erro:", err);
+    return res.status(500).json({
+      error: { code: "INTERNAL_ERROR", message: "Erro ao buscar suspensão" },
+    });
+  }
+}
+
 function fmtDateBr(iso: string): string {
   const [y, m, d] = (iso ?? "").split("-");
   if (!y || !m || !d) return iso;
   return `${d.padStart(2, "0")}/${m.padStart(2, "0")}/${y}`;
 }
 
-function buildSuspensaoFileName(o: PdfOccurrence, drivers: PdfDriver[]): string {
-  const date    = (o.tripDate ?? o.eventDate ?? "").replace(/-/g, ".");
-  const vehicle = o.vehicleNumber ?? "";
-  const driver  = drivers[0]?.name?.split(" ").slice(0, 2).join(" ") ?? "";
-  return [vehicle, driver, "SUSPENSAO", date].filter(Boolean).join(" - ") + ".pdf";
+function buildSuspensaoFileName(
+  o: PdfOccurrence,
+  drivers: PdfDriver[],
+  tipoOcorrencia: string,
+): string {
+  const d1 = drivers[0];
+  const matricula = d1?.code ?? "";
+  const nome = d1?.name?.split(" ").slice(0, 2).join(" ") ?? "";
+  const base = d1?.baseCode ?? "";
+  const date = (o.tripDate ?? o.eventDate ?? "").replace(/-/g, ".");
+  return [matricula, nome, base, tipoOcorrencia, date, "SUSPENSAO"]
+    .filter(Boolean)
+    .join(" - ") + ".pdf";
 }
 
 async function resolveLocalNome(place: string): Promise<string> {
