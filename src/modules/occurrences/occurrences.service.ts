@@ -75,6 +75,28 @@ export async function createOccurrence(payload: any) {
     await updateOccurrenceBaseCode(id, snapshotBase);
   }
 
+  // Notifica planilha para cada parada proibida em análise operacional
+  if (payload.typeCode === "ANALISE_OP" && driver1 && Array.isArray(payload.paradasProibidas) && payload.paradasProibidas.length > 0) {
+    const driver1Snapshot = await getDriverSnapshotByOccurrence(id, 1);
+    const driverBase = driver1.driverId ? await getDriverBaseById(driver1.driverId) : undefined;
+
+    for (const parada of payload.paradasProibidas as Array<{ localNome: string; localCodigo: string | null }>) {
+      const localIdNum = await getLocalIdByNome(parada.localNome);
+      const localIdStr = localIdNum ? String(localIdNum) : (parada.localCodigo ?? parada.localNome ?? "—");
+
+      await notifyAppsScript({
+        localId: localIdStr,
+        localNome: parada.localNome,
+        carro: payload.vehicleNumber,
+        motoristaId: driver1Snapshot?.registry ?? driver1.driverId ?? "",
+        motoristaNome: driver1Snapshot?.name ?? "",
+        base: driver1Snapshot?.base_code || driverBase || baseCode,
+        dataRelatorio: payload.eventDate,
+        linha: payload.lineLabel ?? "",
+      });
+    }
+  }
+
   // Notifica planilha apenas para ocorrências de Parada Fora do Programado
   if (payload.typeCode === "DESCUMP_OP_PARADA_FORA" && driver1) {
     const driver1Snapshot = await getDriverSnapshotByOccurrence(id, 1);
