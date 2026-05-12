@@ -4,7 +4,7 @@ import { AppError } from "./pdf.errors.js";
 import { getOccurrenceForPdf, listDriversByOccurrence } from "./pdf.repo.js";
 import { getSuspensaoLogoDataUri } from "./pdf.assets.js";
 import { buildSuspensaoPdfHtml } from "./suspensao.template.js";
-import { renderSuspensaoPdfFromHtml } from "./pdf.puppeteer.js";
+import { renderPdfFromHtml } from "./pdf.puppeteer.js";
 import { gerarParagrafoSuspensao } from "../../ai/ai.service.js";
 import { findLocalById } from "../../locais/locais.repo.js";
 
@@ -75,7 +75,7 @@ export async function getSuspensaoPdfHandler(req: Request, res: Response) {
       logoDataUri: getSuspensaoLogoDataUri(),
     });
 
-    const pdfBuffer = await renderSuspensaoPdfFromHtml(html);
+    const pdfBuffer = await renderPdfFromHtml(html);
 
     const filename = `suspensao-${matricula || motoristaNome.split(" ")[0]}-${dataInicioSuspensao}.pdf`
       .replace(/[^a-zA-Z0-9\-_.]/g, "_");
