@@ -51,7 +51,9 @@ export async function getSuspensaoPdfHandler(req: Request, res: Response) {
     if (baseCode) partes.push(baseCode);
     const colaborador = partes.join(" – ");
 
-    const tipoOcorrencia = occurrence.typeTitle ?? occurrence.typeCode ?? "Ocorrência";
+    const tipoOcorrencia = occurrence.typeCode === "GENERICO"
+      ? (occurrence.reportTitle ?? occurrence.typeTitle ?? "Ocorrência")
+      : (occurrence.typeTitle ?? occurrence.typeCode ?? "Ocorrência");
     const fmtDataOcorrencia = fmtDateBr(occurrence.eventDate);
 
     // Se place for um ID numérico, resolve o nome no cadastro de locais
@@ -64,6 +66,7 @@ export async function getSuspensaoPdfHandler(req: Request, res: Response) {
       local: localNome,
       dataOcorrencia: fmtDataOcorrencia,
       motoristaNome,
+      relatoHtml: occurrence.relatoHtml ?? null,
     });
 
     const html = buildSuspensaoPdfHtml({

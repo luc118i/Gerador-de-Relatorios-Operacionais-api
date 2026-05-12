@@ -145,9 +145,31 @@ export async function gerarParagrafoSuspensao(args: {
   local: string;
   dataOcorrencia: string;
   motoristaNome: string;
+  relatoHtml?: string | null;
 }): Promise<string> {
   const groq = getClient();
-  const { tipoOcorrencia, prefixo, linha, local, dataOcorrencia, motoristaNome } = args;
+  const { tipoOcorrencia, prefixo, linha, local, dataOcorrencia, motoristaNome, relatoHtml } = args;
+
+  const plainRelato = relatoHtml ? stripHtml(relatoHtml).slice(0, 4000).trim() : "";
+
+  const userContent = plainRelato
+    ? `Com base no relato da ocorrência abaixo, escreva APENAS UMA frase inicial para o parágrafo principal de uma carta de suspensão disciplinar ao motorista ${motoristaNome} (prefixo ${prefixo}, data ${dataOcorrencia}).
+A frase deve sintetizar objetivamente o que foi constatado, em linguagem formal e impessoal adequada a um documento disciplinar oficial.
+Não copie o relato — sintetize em uma frase direta. Termine com ponto final.
+
+Relato:
+${plainRelato}`
+    : `Escreva APENAS UMA frase inicial para o parágrafo principal de uma carta de suspensão disciplinar.
+A frase deve relatar objetivamente a infração cometida pelo motorista, mencionando os dados fornecidos.
+Dados:
+- Tipo de ocorrência: ${tipoOcorrencia}
+- Veículo (prefixo): ${prefixo}
+- Linha: ${linha || "não informada"}
+- Local/Ponto: ${local || "não informado"}
+- Data da ocorrência: ${dataOcorrencia}
+- Motorista: ${motoristaNome}
+
+Escreva apenas a frase, sem introdução, sem explicações adicionais. Termine com ponto final.`;
 
   const completion = await groq.chat.completions.create({
     model: "llama-3.3-70b-versatile",
@@ -158,20 +180,7 @@ export async function gerarParagrafoSuspensao(args: {
           "Você é um redator de documentos disciplinares de RH de uma empresa de transporte rodoviário. " +
           "Escreva em português formal e objetivo. Nunca invente dados não fornecidos.",
       },
-      {
-        role: "user",
-        content:
-          `Escreva APENAS UMA frase inicial para o parágrafo principal de uma carta de suspensão disciplinar. ` +
-          `A frase deve relatar objetivamente a infração cometida pelo motorista, mencionando os dados fornecidos.\n` +
-          `Dados:\n` +
-          `- Tipo de ocorrência: ${tipoOcorrencia}\n` +
-          `- Veículo (prefixo): ${prefixo}\n` +
-          `- Linha: ${linha || "não informada"}\n` +
-          `- Local/Ponto: ${local || "não informado"}\n` +
-          `- Data da ocorrência: ${dataOcorrencia}\n` +
-          `- Motorista: ${motoristaNome}\n\n` +
-          `Escreva apenas a frase, sem introdução, sem explicações adicionais. Termine com ponto final.`,
-      },
+      { role: "user", content: userContent },
     ],
     temperature: 0.2,
     max_tokens: 200,
