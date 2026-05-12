@@ -627,7 +627,9 @@ export function buildGenericOccurrencePdfHtml(args: {
   const passengerConnection = escapeHtml(occurrence.passengerConnection || "—");
 
   const relatoHtml = occurrence.relatoHtml || "<p><em>Sem relato registrado.</em></p>";
-  const devolutivaHtml = occurrence.devolutivaHtml || "";
+  const devolutivaHtml = occurrence.devolutivaHtml?.replace(/<[^>]+>/g, "").trim()
+    ? occurrence.devolutivaHtml
+    : "";
   const devolutivaStatus = occurrence.devolutivaStatus ?? null;
 
   const showViagem              = occurrence.showSectionViagem              ?? true;
@@ -955,23 +957,23 @@ export function buildGenericOccurrencePdfHtml(args: {
       <div class="text-area">${relatoHtml}</div>
     </div>
 
-    ${devolutivaBeforeEvid && (devolutivaHtml || statusBadge) ? `
+    ${devolutivaBeforeEvid && devolutivaHtml ? `
     <!-- ══ DEVOLUTIVA / SOLUÇÃO ADOTADA (antes das evidências) ══ -->
     <div class="section">
       <div class="section-hd">DEVOLUTIVA / SOLU&#199;&#195;O ADOTADA</div>
       ${statusBadge}
-      ${devolutivaHtml ? `<div class="text-area">${devolutivaHtml}</div>` : ""}
+      <div class="text-area">${devolutivaHtml}</div>
     </div>` : ""}
 
     <!-- ══ EVIDÊNCIAS ══ -->
     ${evidences.length > 0 ? `<div class="ev-section">${evidenceHtml}</div>` : ""}
 
-    ${!devolutivaBeforeEvid && (devolutivaHtml || statusBadge) ? `
+    ${!devolutivaBeforeEvid && devolutivaHtml ? `
     <!-- ══ DEVOLUTIVA / SOLUÇÃO ADOTADA (após as evidências) ══ -->
     <div class="section">
       <div class="section-hd">DEVOLUTIVA / SOLU&#199;&#195;O ADOTADA</div>
       ${statusBadge}
-      ${devolutivaHtml ? `<div class="text-area">${devolutivaHtml}</div>` : ""}
+      <div class="text-area">${devolutivaHtml}</div>
     </div>` : ""}
 
   </div><!-- /content-wrap -->
