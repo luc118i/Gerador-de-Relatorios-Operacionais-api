@@ -406,14 +406,11 @@ export function buildAnaliseOpPdfHtml(args: {
       }).join(" / ")
     : "";
 
-  const trechoText = escapeHtml((occurrence.place ?? "").trim());
-
   const rowsViagem =
-    rowFull("Itiner&#225;rio:", itinerario) +
+    rowPair("Itiner&#225;rio:", itinerario, "Hor&#225;rio da Viagem:", tripTimeFmt ? escapeHtml(tripTimeFmt) : "") +
     rowPair("Prefixo do Ve&#237;culo:", prefixo, "Data da Viagem:", tripDate) +
     rowPair("Per&#237;odo:", periodo, "Data do Relat&#243;rio:", escapeHtml(fmtDateBrFromDate(new Date()))) +
-    (tripTimeFmt ? rowPair("Hor&#225;rio da Viagem:", escapeHtml(tripTimeFmt), "", "") : "") +
-    rowPair("Motorista:", motoristaText, "Registro do Trecho:", trechoText);
+    (motoristaText ? rowFull("Motorista:", motoristaText) : "");
 
   return `<!doctype html>
 <html>
