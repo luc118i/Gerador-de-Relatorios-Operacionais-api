@@ -85,6 +85,7 @@ export async function summarizeAnaliseOp(
   html: string,
   reportTitle: string,
   mode: "whatsapp" | "email",
+  motorista?: string,
 ): Promise<string> {
   const groq = getClient();
   const plain = stripHtml(html).slice(0, 6000);
@@ -92,6 +93,9 @@ export async function summarizeAnaliseOp(
   const systemPrompt =
     "Você é um assistente especializado em análise operacional de transporte rodoviário de longa distância. " +
     "Responda sempre em português formal e direto. Nunca invente dados que não estão no texto.";
+
+  const motoristaLine = motorista ? `👤 *Motorista:* ${motorista}` : "👤 *Motorista:* [matrícula – nome – base]";
+  const motoristaEmail = motorista ? motorista : "[matrícula – nome – base]";
 
   const userPrompt =
     mode === "whatsapp"
@@ -103,7 +107,7 @@ Use exatamente este layout (substitua os colchetes pelos dados reais; omita linh
 📋 *Linha:* [linha e horário]
 🚌 *Prefixo:* [prefixo do veículo]
 📅 *Data:* [data da viagem]
-👤 *Motorista:* [matrícula – nome – base]
+${motoristaLine}
 
 📊 *Achados:*
 [liste cada irregularidade com •, máximo 5 itens]
@@ -114,7 +118,7 @@ Relatório:
 ${plain}`
       : `Analise o relatório de viagem abaixo e escreva um resumo executivo formal para e-mail interno.
 Estrutura esperada:
-1. Parágrafo de identificação (linha, prefixo, data, motorista)
+1. Parágrafo de identificação (linha, prefixo, data, motorista: ${motoristaEmail})
 2. Parágrafo com as irregularidades encontradas (paradas fora do esquema, excessos de tempo, pontos não visitados)
 3. Parágrafo de conclusão
 
@@ -153,14 +157,19 @@ export async function gerarParagrafoSuspensao(args: {
   const plainRelato = relatoHtml ? stripHtml(relatoHtml).slice(0, 4000).trim() : "";
 
   const userContent = plainRelato
-    ? `Com base no relato da ocorrência abaixo, escreva APENAS UMA frase inicial para o parágrafo principal de uma carta de suspensão disciplinar ao motorista ${motoristaNome} (prefixo ${prefixo}, data ${dataOcorrencia}).
-A frase deve sintetizar objetivamente o que foi constatado, em linguagem formal e impessoal adequada a um documento disciplinar oficial.
+    ? `Com base no relato da ocorrência abaixo, escreva APENAS UMA frase inicial para o parágrafo principal de uma carta de suspensão disciplinar.
+A frase deve mencionar obrigatoriamente o prefixo do veículo ${prefixo} e sintetizar objetivamente o que foi constatado, em linguagem formal e impessoal adequada a um documento disciplinar oficial.
 Não copie o relato — sintetize em uma frase direta. Termine com ponto final.
+
+Dados do registro:
+- Motorista: ${motoristaNome}
+- Prefixo do veículo: ${prefixo}
+- Data: ${dataOcorrencia}
 
 Relato:
 ${plainRelato}`
     : `Escreva APENAS UMA frase inicial para o parágrafo principal de uma carta de suspensão disciplinar.
-A frase deve relatar objetivamente a infração cometida pelo motorista, mencionando os dados fornecidos.
+A frase deve relatar objetivamente a infração cometida pelo motorista, mencionando obrigatoriamente o prefixo do veículo.
 Dados:
 - Tipo de ocorrência: ${tipoOcorrencia}
 - Veículo (prefixo): ${prefixo}

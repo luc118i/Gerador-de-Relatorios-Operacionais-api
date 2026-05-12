@@ -11,6 +11,7 @@ const analiseOpSchema = z.object({
   html:        z.string().min(20, "html muito curto"),
   reportTitle: z.string().optional().default(""),
   mode:        z.enum(["whatsapp", "email"]),
+  motorista:   z.string().optional(),
 });
 
 export function aiRoutes(app: Express) {
@@ -20,8 +21,8 @@ export function aiRoutes(app: Express) {
       if (!parsed.success) {
         return res.status(400).json({ error: { code: "INVALID_PAYLOAD", issues: parsed.error.issues } });
       }
-      const { html, reportTitle, mode } = parsed.data;
-      const summary = await summarizeAnaliseOp(html, reportTitle, mode);
+      const { html, reportTitle, mode, motorista } = parsed.data;
+      const summary = await summarizeAnaliseOp(html, reportTitle, mode, motorista);
       res.json({ summary });
     } catch (err) {
       next(err);
