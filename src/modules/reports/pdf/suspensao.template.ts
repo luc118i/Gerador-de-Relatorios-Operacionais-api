@@ -15,7 +15,10 @@ function fmtDateBr(iso: string): string {
 }
 
 function fmtDateExtenso(iso: string): string {
-  const [y, m, d] = (iso ?? "").split("-");
+  const parts = (iso ?? "").split("-");
+  const y = parts[0] ?? "";
+  const m = parts[1] ?? "";
+  const d = parts[2] ?? "";
   if (!y || !m || !d) return iso;
   const mes = MESES[parseInt(m, 10) - 1] ?? m;
   return `${parseInt(d, 10)} de ${mes} de ${y}`;
@@ -81,11 +84,12 @@ export function buildSuspensaoPdfHtml(args: {
   <style>
     @page {
       size: A4;
-      margin: 25mm 25mm 25mm 25mm;
+      margin: 25mm 30mm 25mm 30mm;
     }
     * { box-sizing: border-box; }
     body {
-      font-family: "Times New Roman", Times, serif;
+      font-family: "Calibri Light", "Calibri", "Carlito", "Arial Narrow", Arial, sans-serif;
+      font-weight: 300;
       font-size: 12pt;
       color: #000;
       margin: 0;
@@ -96,46 +100,63 @@ export function buildSuspensaoPdfHtml(args: {
       width: 262px;
       height: auto;
       display: block;
-      margin-bottom: 18pt;
+      margin-bottom: 20pt;
     }
     .title {
       text-align: center;
-      font-weight: bold;
+      font-family: "Calibri", "Carlito", Arial, sans-serif;
+      font-weight: 400;
       font-size: 12pt;
-      margin: 0 0 18pt 0;
+      margin: 0 0 20pt 0;
       text-transform: uppercase;
-      letter-spacing: 0.5px;
+      letter-spacing: 0.8px;
     }
     .field {
       margin: 0 0 4pt 0;
       font-size: 12pt;
       line-height: 1.4;
     }
-    .field.bold { font-weight: bold; }
+    .field.bold {
+      font-family: "Calibri", "Carlito", Arial, sans-serif;
+      font-weight: 700;
+    }
     .spacer { margin-bottom: 14pt; }
     .para {
+      font-family: "Calibri", "Carlito", Arial, sans-serif;
+      font-weight: 700;
       font-size: 12pt;
-      font-weight: bold;
       line-height: 1.5;
       text-align: justify;
       margin: 0 0 14pt 0;
     }
-    .assinatura {
-      margin-top: 40pt;
-      text-align: center;
+    .footer-block {
+      margin-top: 36pt;
+      font-family: "Calibri Light", "Calibri", "Carlito", Arial, sans-serif;
+      font-weight: 300;
       font-size: 11pt;
-      font-weight: normal;
-      line-height: 1.6;
     }
-    .assinatura .cidade-data {
+    .cidade-data {
       text-align: right;
-      margin-bottom: 30pt;
+      margin-bottom: 28pt;
+      font-size: 11pt;
     }
-    .assinatura .linha {
-      display: inline-block;
+    .assinaturas {
+      display: flex;
+      justify-content: space-between;
+      gap: 20pt;
+    }
+    .assinatura-col {
+      flex: 1;
+      text-align: center;
+    }
+    .assinatura-linha {
+      display: block;
       border-top: 1px solid #000;
-      width: 260px;
       margin-bottom: 4pt;
+    }
+    .assinatura-label {
+      font-size: 11pt;
+      line-height: 1.4;
     }
   </style>
 </head>
@@ -158,13 +179,18 @@ export function buildSuspensaoPdfHtml(args: {
 
   <div class="para">Diante do exposto, com fundamento no Art. 474 da CLT, notificamos V.S&#170; que ficar&#225; suspenso(a) pelo per&#237;odo de ${nDias} (${esc(nDiasExtenso)}) ${diaPalavra}, a contar de ${esc(fmtDateBr(dataInicioSuspensao))}, devendo retornar ao trabalho no dia ${esc(fmtDateBr(dataRetorno))}. Essa medida disciplinar visa conscientizar o colaborador sobre a gravidade de seus atos e evitar reincid&#234;ncias, que poder&#227;o resultar em penalidades mais severas, inclusive rescis&#227;o por justa causa.</div>
 
-  <div class="assinatura">
-    <div class="cidade-data">Bras&#237;lia-DF, ${esc(fmtDateExtenso(dataAtual))}</div>
-    <div><span class="linha"></span></div>
-    <div>Ger&#234;ncia / Fiscaliza&#231;&#227;o</div>
-    <br/>
-    <div><span class="linha"></span></div>
-    <div>Ci&#234;ncia do Colaborador</div>
+  <div class="footer-block">
+    <div class="cidade-data">Bras&#237;lia-DF, ${esc(fmtDateExtenso(dataAtual))}.</div>
+    <div class="assinaturas">
+      <div class="assinatura-col">
+        <span class="assinatura-linha"></span>
+        <div class="assinatura-label">Ger&#234;ncia / Fiscaliza&#231;&#227;o</div>
+      </div>
+      <div class="assinatura-col">
+        <span class="assinatura-linha"></span>
+        <div class="assinatura-label">Ci&#234;ncia do Colaborador</div>
+      </div>
+    </div>
   </div>
 
 </body>

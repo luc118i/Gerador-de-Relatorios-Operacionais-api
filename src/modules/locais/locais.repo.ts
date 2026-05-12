@@ -11,3 +11,13 @@ export async function findAllLocais(search?: string) {
   if (error) throw new Error(error.message);
   return data;
 }
+
+export async function findLocalById(id: number): Promise<string | null> {
+  const { data, error } = await supabaseAdmin
+    .from("locais")
+    .select("nome")
+    .eq("id", id)
+    .maybeSingle();
+  if (error || !data) return null;
+  return (data as any).nome as string;
+}

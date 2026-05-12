@@ -6,6 +6,7 @@ import { getSuspensaoLogoDataUri } from "./pdf.assets.js";
 import { buildSuspensaoPdfHtml } from "./suspensao.template.js";
 import { renderSuspensaoPdfFromHtml } from "./pdf.puppeteer.js";
 import { gerarParagrafoSuspensao } from "../../ai/ai.service.js";
+import { findLocalById } from "../../locais/locais.repo.js";
 
 const BodySchema = z.object({
   dataInicioSuspensao: z
@@ -52,11 +53,14 @@ export async function getSuspensaoPdfHandler(req: Request, res: Response) {
     const tipoOcorrencia = occurrence.typeTitle ?? occurrence.typeCode ?? "Ocorrência";
     const fmtDataOcorrencia = fmtDateBr(occurrence.eventDate);
 
+    // Se place for um ID numérico, resolve o nome no cadastro de locais
+    const localNome = await resolveLocalNome(occurrence.place ?? "");
+
     const primeiroParagrafo = await gerarParagrafoSuspensao({
       tipoOcorrencia,
       prefixo: occurrence.vehicleNumber ?? "—",
       linha: occurrence.lineLabel ?? "",
-      local: occurrence.place ?? "",
+      local: localNome,
       dataOcorrencia: fmtDataOcorrencia,
       motoristaNome,
     });
@@ -97,4 +101,14 @@ function fmtDateBr(iso: string): string {
   const [y, m, d] = (iso ?? "").split("-");
   if (!y || !m || !d) return iso;
   return `${d.padStart(2, "0")}/${m.padStart(2, "0")}/${y}`;
+}
+
+async function resolveLocalNome(place: string): Promise<string> {
+  if (!place) return "";
+  const numId = Number(place);
+  if (Number.isInteger(numId) && numId > 0) {
+    const nome = await findLocalById(numId);
+    return nome ?? place;
+  }
+  return place;
 }
