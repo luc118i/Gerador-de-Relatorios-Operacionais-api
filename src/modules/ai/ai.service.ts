@@ -65,6 +65,79 @@ ${html}`,
   return { corrected, errorCount };
 }
 
+function stripHtml(html: string): string {
+  return html
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(?:p|tr|li|div|h[1-6]|thead|tbody)>/gi, "\n")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#\d+;/g, " ")
+    .replace(/[ \t]{2,}/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+export async function summarizeAnaliseOp(
+  html: string,
+  reportTitle: string,
+  mode: "whatsapp" | "email",
+): Promise<string> {
+  const groq = getClient();
+  const plain = stripHtml(html).slice(0, 6000);
+
+  const systemPrompt =
+    "Você é um assistente especializado em análise operacional de transporte rodoviário de longa distância. " +
+    "Responda sempre em português formal e direto. Nunca invente dados que não estão no texto.";
+
+  const userPrompt =
+    mode === "whatsapp"
+      ? `Analise o relatório de viagem abaixo e gere uma mensagem formatada para WhatsApp.
+Use exatamente este layout (substitua os colchetes pelos dados reais; omita linhas sem dados):
+
+🔍 *ANÁLISE DE VIAGEM*
+
+📋 *Linha:* [linha e horário]
+🚌 *Prefixo:* [prefixo do veículo]
+📅 *Data:* [data da viagem]
+👤 *Motorista:* [matrícula – nome – base]
+
+📊 *Achados:*
+[liste cada irregularidade com •, máximo 5 itens]
+
+[frase final de conclusão em 1 linha]
+
+Relatório:
+${plain}`
+      : `Analise o relatório de viagem abaixo e escreva um resumo executivo formal para e-mail interno.
+Estrutura esperada:
+1. Parágrafo de identificação (linha, prefixo, data, motorista)
+2. Parágrafo com as irregularidades encontradas (paradas fora do esquema, excessos de tempo, pontos não visitados)
+3. Parágrafo de conclusão
+
+Máximo 4 parágrafos curtos. Linguagem formal. Sem marcações markdown.
+
+Relatório:
+${plain}`;
+
+  const completion = await groq.chat.completions.create({
+    model: "llama-3.3-70b-versatile",
+    messages: [
+      { role: "system", content: systemPrompt },
+      { role: "user",   content: userPrompt },
+    ],
+    temperature: 0.25,
+    max_tokens: mode === "whatsapp" ? 400 : 600,
+  });
+
+  const result = completion.choices[0]?.message?.content?.trim();
+  if (!result) throw new Error("A IA não retornou resultado.");
+  return result;
+}
+
 export async function summarizeOccurrenceText(
   text: string,
   title?: string,
