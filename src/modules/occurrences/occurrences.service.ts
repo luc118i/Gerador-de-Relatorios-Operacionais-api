@@ -119,7 +119,7 @@ export async function createOccurrence(payload: any) {
     const localIdNum = await getLocalIdByNome(payload.place);
     const localIdStr = localIdNum ? String(localIdNum) : (payload.place || "—");
     const driverBase = driver1.driverId ? await getDriverBaseById(driver1.driverId) : undefined;
-    const linhaStr = payload.tripId ?? "";
+    const linhaStr = payload.lineLabel ?? "";
 
     // motorista 1
     await notifyAppsScript({
@@ -249,7 +249,7 @@ export async function updateOccurrence(id: string, payload: any) {
     const localIdNum = await getLocalIdByNome(payload.place);
     const localIdStr = localIdNum ? String(localIdNum) : (payload.place || "—");
     const driverBase = driver1.driverId ? await getDriverBaseById(driver1.driverId) : undefined;
-    const linhaStr = payload.tripId ?? "";
+    const linhaStr = payload.lineLabel ?? "";
 
     await notifyAppsScript({
       localId: localIdStr,
