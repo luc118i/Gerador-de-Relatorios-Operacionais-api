@@ -359,11 +359,12 @@ function fmtTimeBr(t: string) {
 
 export function buildAnaliseOpPdfHtml(args: {
   occurrence: import("./pdf.types.js").PdfOccurrence;
+  drivers?: import("./pdf.types.js").PdfDriver[];
   logoDataUri?: string | null;
   footerCompany?: string | null;
   footerCnpj?: string | null;
 }) {
-  const { occurrence, logoDataUri } = args;
+  const { occurrence, drivers = [], logoDataUri } = args;
 
   const company = args.footerCompany ?? "KANDANGO TRANSPORTE E TURISMO LTDA";
   const cnpj    = args.footerCnpj    ?? "03.233.439/0001-52";
@@ -395,11 +396,22 @@ export function buildAnaliseOpPdfHtml(args: {
     return              `<tr><td class="lbl">${lb}</td><td class="val" colspan="3">${vb}</td></tr>`;
   };
 
+  const motoristaText = drivers.length > 0
+    ? drivers.map((d) => {
+        const parts: string[] = [];
+        if (d.code) parts.push(escapeHtml(d.code));
+        parts.push(escapeHtml(d.name || "—"));
+        if (d.baseCode) parts.push(escapeHtml(d.baseCode));
+        return parts.join(" — ");
+      }).join(" / ")
+    : "";
+
   const rowsViagem =
     rowFull("Itiner&#225;rio:", itinerario) +
     rowPair("Prefixo do Ve&#237;culo:", prefixo, "Data da Viagem:", tripDate) +
     rowPair("Per&#237;odo:", periodo, "Data do Relat&#243;rio:", escapeHtml(fmtDateBrFromDate(new Date()))) +
-    (tripTimeFmt ? rowPair("Hor&#225;rio da Viagem:", escapeHtml(tripTimeFmt), "", "") : "");
+    (tripTimeFmt ? rowPair("Hor&#225;rio da Viagem:", escapeHtml(tripTimeFmt), "", "") : "") +
+    (motoristaText ? rowFull("Motorista:", motoristaText) : "");
 
   return `<!doctype html>
 <html>

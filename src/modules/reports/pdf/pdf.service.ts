@@ -116,6 +116,7 @@ export async function buildOccurrencePdf(args: {
   } else if (occurrence.typeCode === "ANALISE_OP") {
     html = buildAnaliseOpPdfHtml({
       occurrence,
+      drivers,
       logoDataUri: getLogoDataUri(),
     });
   } else {
