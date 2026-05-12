@@ -9,11 +9,24 @@ import {
 import {
   createDriver,
   listDrivers,
+  lookupDriver,
   updateDriver,
   deleteDriver,
 } from "./drivers.service.js";
 
 export function driversRoutes(app: Express) {
+  app.get("/drivers/lookup", async (req, res, next) => {
+    try {
+      const code = String(req.query.code ?? "").trim();
+      if (!code) return res.status(400).json({ message: "code é obrigatório" });
+      const driver = await lookupDriver(code);
+      if (!driver) return res.status(404).json({ message: "Motorista não encontrado" });
+      return res.json(driver);
+    } catch (err) {
+      next(err);
+    }
+  });
+
   app.get("/drivers", async (req, res) => {
     const parsed = searchDriversSchema.parse(req.query);
 

@@ -1,9 +1,16 @@
 import {
   insertDriver,
+  lookupDriverByCode,
   searchDrivers,
   updateDriverRepo,
   deleteDriverRepo,
 } from "./drivers.repo.js";
+
+export async function lookupDriver(code: string) {
+  const row = await lookupDriverByCode(code);
+  if (!row) return null;
+  return { id: row.id, code: row.code, name: row.name, base: row.base };
+}
 
 export async function listDrivers(args: {
   search?: string;

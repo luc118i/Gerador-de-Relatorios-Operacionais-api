@@ -5,6 +5,11 @@ export const listTripsSchema = z.object({
   search: z.string().optional(),
 });
 
+export const lookupTripSchema = z.object({
+  lineName:      z.string().min(1, "lineName é obrigatório"),
+  departureTime: z.string().min(1, "departureTime é obrigatório"),
+});
+
 export const createTripSchema = z.object({
   lineCode: z.string().min(1, "Código da linha é obrigatório"),
   lineName: z.string().min(1, "Nome da linha é obrigatório"),

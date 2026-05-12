@@ -28,6 +28,18 @@ export async function searchDrivers(args: {
   return data ?? [];
 }
 
+export async function lookupDriverByCode(code: string) {
+  const { data, error } = await supabaseAdmin
+    .from("drivers")
+    .select("id, code, name, base")
+    .eq("code", code.trim())
+    .eq("active", true)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data as { id: string; code: string; name: string; base: string | null } | null;
+}
+
 export async function insertDriver(args: {
   code: string;
   name: string;
