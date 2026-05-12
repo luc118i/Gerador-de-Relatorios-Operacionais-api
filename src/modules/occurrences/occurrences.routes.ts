@@ -27,8 +27,10 @@ export function occurrencesRoutes(app: Express) {
   app.post("/occurrences", async (req, res, next) => {
     try {
       const payload = createOccurrenceSchema.parse(req.body);
-      const id = await createOccurrence(payload);
-      res.status(201).json({ id });
+      const result = await createOccurrence(payload);
+      const id = typeof result === "string" ? result : result.id;
+      const paradaForaIds = typeof result === "object" ? result.paradaForaIds : undefined;
+      res.status(201).json({ id, ...(paradaForaIds ? { paradaForaIds } : {}) });
     } catch (err) {
       next(err);
     }

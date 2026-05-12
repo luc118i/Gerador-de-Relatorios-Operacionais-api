@@ -75,25 +75,40 @@ export async function createOccurrence(payload: any) {
     await updateOccurrenceBaseCode(id, snapshotBase);
   }
 
-  // Notifica planilha para cada parada proibida em análise operacional
-  if (payload.typeCode === "ANALISE_OP" && driver1 && Array.isArray(payload.paradasProibidas) && payload.paradasProibidas.length > 0) {
-    const driver1Snapshot = await getDriverSnapshotByOccurrence(id, 1);
-    const driverBase = driver1.driverId ? await getDriverBaseById(driver1.driverId) : undefined;
-
+  // Cria ocorrências PARADA_FORA para cada parada proibida detectada na análise operacional
+  const paradaForaIds: string[] = [];
+  if (
+    payload.typeCode === "ANALISE_OP" &&
+    driver1 &&
+    Array.isArray(payload.paradasProibidas) &&
+    payload.paradasProibidas.length > 0
+  ) {
     for (const parada of payload.paradasProibidas as Array<{ localNome: string; localCodigo: string | null }>) {
-      const localIdNum = await getLocalIdByNome(parada.localNome);
-      const localIdStr = localIdNum ? String(localIdNum) : (parada.localCodigo ?? parada.localNome ?? "—");
-
-      await notifyAppsScript({
-        localId: localIdStr,
-        localNome: parada.localNome,
-        carro: payload.vehicleNumber,
-        motoristaId: driver1Snapshot?.registry ?? driver1.driverId ?? "",
-        motoristaNome: driver1Snapshot?.name ?? "",
-        base: driver1Snapshot?.base_code || driverBase || baseCode,
-        dataRelatorio: payload.eventDate,
-        linha: payload.lineLabel ?? "",
-      });
+      try {
+        const paradaId = await createOccurrence({
+          typeCode: "DESCUMP_OP_PARADA_FORA",
+          eventDate: payload.eventDate,
+          tripDate: payload.tripDate,
+          startTime: payload.startTime,
+          endTime: payload.endTime,
+          vehicleNumber: payload.vehicleNumber,
+          lineLabel: payload.lineLabel ?? null,
+          tripId: payload.tripId ?? null,
+          tripTime: payload.tripTime ?? null,
+          place: parada.localNome,
+          relatoHtml: payload.paradaForaRelatoHtml ?? "",
+          showSectionTripulacao: true,
+          showSectionViagem: true,
+          showSectionIdentificacao: true,
+          showSectionDados: true,
+          showSectionPassageiros: false,
+          devolutivaBeforeEvidences: false,
+          drivers: [{ position: 1 as const, driverId: driver1.driverId, name: driver1.name, registry: driver1.registry, baseCode: driver1.baseCode }],
+        });
+        if (typeof paradaId === "string") paradaForaIds.push(paradaId);
+      } catch (err) {
+        console.error("[createOccurrence] Falha ao criar PARADA_FORA para", parada.localNome, err);
+      }
     }
   }
 
@@ -136,7 +151,7 @@ export async function createOccurrence(payload: any) {
     }
   }
 
-  return id;
+  return paradaForaIds.length > 0 ? { id, paradaForaIds } : id;
 }
 
 export async function getOccurrencesByDay(date: string) {
