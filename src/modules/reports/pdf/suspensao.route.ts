@@ -7,6 +7,7 @@ import { buildSuspensaoPdfHtml } from "./suspensao.template.js";
 import { renderPdfFromHtml } from "./pdf.puppeteer.js";
 import { gerarParagrafoSuspensao } from "../../ai/ai.service.js";
 import { findLocalById } from "../../locais/locais.repo.js";
+import type { PdfOccurrence, PdfDriver } from "./pdf.types.js";
 
 const BodySchema = z.object({
   dataInicioSuspensao: z
@@ -77,8 +78,7 @@ export async function getSuspensaoPdfHandler(req: Request, res: Response) {
 
     const pdfBuffer = await renderPdfFromHtml(html);
 
-    const filename = `suspensao-${matricula || motoristaNome.split(" ")[0]}-${dataInicioSuspensao}.pdf`
-      .replace(/[^a-zA-Z0-9\-_.]/g, "_");
+    const filename = buildSuspensaoFileName(occurrence, drivers);
 
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
@@ -101,6 +101,13 @@ function fmtDateBr(iso: string): string {
   const [y, m, d] = (iso ?? "").split("-");
   if (!y || !m || !d) return iso;
   return `${d.padStart(2, "0")}/${m.padStart(2, "0")}/${y}`;
+}
+
+function buildSuspensaoFileName(o: PdfOccurrence, drivers: PdfDriver[]): string {
+  const date    = (o.tripDate ?? o.eventDate ?? "").replace(/-/g, ".");
+  const vehicle = o.vehicleNumber ?? "";
+  const driver  = drivers[0]?.name?.split(" ").slice(0, 2).join(" ") ?? "";
+  return [vehicle, driver, "SUSPENSAO", date].filter(Boolean).join(" - ") + ".pdf";
 }
 
 async function resolveLocalNome(place: string): Promise<string> {
