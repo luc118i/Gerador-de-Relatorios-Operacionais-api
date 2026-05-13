@@ -120,13 +120,21 @@ export async function buildOccurrencePdf(args: {
       logoDataUri: getLogoDataUri(),
     });
   } else {
-    // Priority: type-specific builder → stored relato_html → generic fallback
-    const reportHtml = buildReportHtml(occurrence) ?? occurrence.relatoHtml ?? undefined;
+    const isParadaFora = occurrence.typeCode === "DESCUMP_OP_PARADA_FORA";
+    // For DESCUMP_OP_PARADA_FORA: standard text before evidences, schema after
+    const reportHtml = isParadaFora
+      ? undefined
+      : (buildReportHtml(occurrence) ?? occurrence.relatoHtml ?? undefined);
+    const schemaHtml = isParadaFora
+      ? (occurrence.relatoHtml ?? undefined)
+      : undefined;
+
     html = buildOccurrencePdfHtml({
       occurrence,
       drivers,
       reportText: "",
       ...(reportHtml !== undefined && { reportHtml }),
+      ...(schemaHtml !== undefined && { schemaHtml }),
       evidences: embedded,
       logoDataUri: getLogoDataUri(),
     });

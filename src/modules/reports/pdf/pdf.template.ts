@@ -12,6 +12,7 @@ export function buildOccurrencePdfHtml(args: {
   drivers: PdfDriver[];
   reportText: string;
   reportHtml?: string; // HTML pré-construído — bypassa o escapeHtml
+  schemaHtml?: string; // Esquema da viagem — renderizado após evidências
   evidences: EvidenceInput[];
 
   logoDataUri?: string | null;
@@ -290,6 +291,10 @@ export function buildOccurrencePdfHtml(args: {
   <div class="section-title">EVIDÊNCIAS</div>
   ${evidenceHtml}
 
+  ${args.schemaHtml ? `
+  <hr class="separator" />
+  <div class="section-title">ESQUEMA DA VIAGEM</div>
+  <div class="relato">${args.schemaHtml}</div>` : ""}
 
 </body>
 </html>`;

@@ -26,6 +26,16 @@ export async function searchTrips(args: {
   return data ?? [];
 }
 
+export async function fetchTripById(id: string) {
+  const { data, error } = await supabaseAdmin
+    .from("trips")
+    .select("id, line_code, line_name, departure_time, direction")
+    .eq("id", id)
+    .single();
+  if (error) return null;
+  return data as { id: string; line_code: string; line_name: string; departure_time: string; direction: string };
+}
+
 export async function fetchTripsByDepartureTime(departureTime: string) {
   const { data, error } = await supabaseAdmin
     .from("trips")
