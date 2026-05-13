@@ -6,7 +6,8 @@ import {
   updateEvidenceCaption,
 } from "./evidences.service.js";
 import { getOccurrenceById } from "../occurrences/occurrences.repo.js";
-import { getSignedUrl } from "./evidences.repo.js";
+import { getSignedUrl, uploadFileToBucket, insertEvidenceRow } from "./evidences.repo.js";
+import { renderSuspensaoPdfFromHtml } from "../reports/pdf/pdf.puppeteer.js";
 
 const MAX_FILES = 30;
 
@@ -96,5 +97,49 @@ export function evidencesRoutes(app: Express) {
     const occurrenceId = req.params.id;
     const data = await getEvidences(occurrenceId);
     res.json({ data, count: data.length });
+  });
+
+  app.post("/occurrences/:id/esquema-pdf-evidence", async (req, res) => {
+    try {
+      const occurrenceId = String(req.params.id ?? "");
+      const esquemaHtml = String(req.body?.esquemaHtml ?? "").trim();
+
+      if (!occurrenceId) return res.status(400).json({ error: "missing occurrence id" });
+      if (!esquemaHtml) return res.status(400).json({ error: "esquemaHtml vazio — sem esquema disponível" });
+
+      const fullHtml = `<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <style>
+    body { font-family: "Segoe UI", Arial, sans-serif; margin: 0; padding: 16mm 16mm 16mm 16mm; font-size: 11pt; color: #111; }
+    table { border-collapse: collapse; }
+    h4 { margin-top: 0; }
+  </style>
+</head>
+<body>${esquemaHtml}</body>
+</html>`;
+
+      const pdfBuffer = await renderSuspensaoPdfFromHtml(fullHtml);
+
+      const storagePath = await uploadFileToBucket({
+        occurrenceId,
+        filename: "esquema-operacional.pdf",
+        mimeType: "application/pdf",
+        buffer: pdfBuffer,
+      });
+
+      const row = await insertEvidenceRow({
+        occurrenceId,
+        sortOrder: 1,
+        storagePath,
+        caption: "Esquema Operacional",
+      });
+
+      return res.status(201).json({ evidenceId: row.id });
+    } catch (err: any) {
+      console.error("[esquema-pdf-evidence] erro:", err);
+      return res.status(500).json({ error: err?.message ?? "Erro ao gerar PDF do esquema" });
+    }
   });
 }
