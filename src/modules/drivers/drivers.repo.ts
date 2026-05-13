@@ -84,6 +84,24 @@ export async function updateDriverRepo(args: {
   return !!data;
 }
 
+export async function upsertDriverRepo(args: {
+  code: string;
+  name: string;
+  base: string | null;
+}) {
+  const { data, error } = await supabaseAdmin
+    .from("drivers")
+    .upsert(
+      { code: args.code.trim(), name: args.name.trim(), base: args.base?.trim() || null, active: true },
+      { onConflict: "code" },
+    )
+    .select("id, code, name, base")
+    .single();
+
+  if (error) throw error;
+  return data as { id: string; code: string; name: string; base: string | null };
+}
+
 export async function deleteDriverRepo(id: string) {
   const { data, error } = await supabaseAdmin
     .from("drivers")

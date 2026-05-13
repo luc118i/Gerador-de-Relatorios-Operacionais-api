@@ -12,6 +12,7 @@ import {
   lookupDriver,
   updateDriver,
   deleteDriver,
+  upsertDriver,
 } from "./drivers.service.js";
 
 export function driversRoutes(app: Express) {
@@ -51,6 +52,22 @@ export function driversRoutes(app: Express) {
       };
       const created = await createDriver(payload);
       res.status(201).json(created);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // Cria ou atualiza motorista pelo código (matrícula).
+  // Usado pelo GAS para sincronizar motoristas da planilha sem precisar de lookup prévio.
+  app.post("/drivers/upsert", async (req, res, next) => {
+    try {
+      const payloadRaw = createDriverSchema.parse(req.body);
+      const driver = await upsertDriver({
+        code: payloadRaw.code,
+        name: payloadRaw.name,
+        base: payloadRaw.base ?? null,
+      });
+      res.status(200).json(driver);
     } catch (err) {
       next(err);
     }

@@ -4,6 +4,7 @@ import {
   searchDrivers,
   updateDriverRepo,
   deleteDriverRepo,
+  upsertDriverRepo,
 } from "./drivers.repo.js";
 
 export async function lookupDriver(code: string) {
@@ -86,4 +87,17 @@ export async function updateDriver(
 export async function deleteDriver(id: string) {
   const deleted = await deleteDriverRepo(id);
   return deleted;
+}
+
+export async function upsertDriver(payload: {
+  code: string;
+  name: string;
+  base?: string | null;
+}) {
+  const row = await upsertDriverRepo({
+    code: payload.code,
+    name: payload.name,
+    base: payload.base ?? null,
+  });
+  return { id: row.id, code: row.code, name: row.name, base: row.base };
 }
