@@ -402,3 +402,36 @@ export async function deleteOccurrence(id: string) {
 
   if (error) throw error;
 }
+
+export async function listReportTitles(): Promise<string[]> {
+  const { data: typeRow } = await supabaseAdmin
+    .from("occurrence_types")
+    .select("id")
+    .eq("code", "GENERICO")
+    .maybeSingle();
+
+  if (!typeRow) return [];
+
+  const { data, error } = await supabaseAdmin
+    .from("occurrences")
+    .select("report_title")
+    .eq("type_id", typeRow.id)
+    .not("report_title", "is", null)
+    .neq("report_title", "");
+
+  if (error) {
+    console.warn("[listReportTitles]", error.message);
+    return [];
+  }
+
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const row of (data ?? [])) {
+    const title = String(row.report_title ?? "").trim().toUpperCase();
+    if (title && !seen.has(title)) {
+      seen.add(title);
+      result.push(title);
+    }
+  }
+  return result.sort();
+}

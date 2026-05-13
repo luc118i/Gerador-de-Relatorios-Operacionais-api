@@ -120,7 +120,8 @@ export async function buildOccurrencePdf(args: {
       logoDataUri: getLogoDataUri(),
     });
   } else {
-    const reportHtml = buildReportHtml(occurrence);
+    // Priority: type-specific builder → stored relato_html → generic fallback
+    const reportHtml = buildReportHtml(occurrence) ?? occurrence.relatoHtml ?? undefined;
     html = buildOccurrencePdfHtml({
       occurrence,
       drivers,

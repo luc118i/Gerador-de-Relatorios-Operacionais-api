@@ -10,6 +10,7 @@ import {
 import {
   deleteOccurrence,
   getOccurrenceById,
+  listReportTitles,
 } from "./occurrences.repo.js";
 
 export function occurrencesRoutes(app: Express) {
@@ -33,6 +34,16 @@ export function occurrencesRoutes(app: Express) {
       res.status(201).json({ id, ...(paradaForaIds ? { paradaForaIds } : {}) });
     } catch (err) {
       next(err);
+    }
+  });
+
+  // Must be before /:id to avoid Express matching "report-titles" as id
+  app.get("/occurrences/report-titles", async (_req, res) => {
+    try {
+      const titles = await listReportTitles();
+      res.json({ data: titles });
+    } catch (err) {
+      res.status(500).json({ error: "Failed to fetch report titles" });
     }
   });
 

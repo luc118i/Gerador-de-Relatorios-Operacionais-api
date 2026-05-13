@@ -24,6 +24,7 @@ export function buildOccurrencePdfHtml(args: {
   const cnpj = args.footerCnpj ?? "03.233.439/0001-52";
 
   const lineLabel = occurrence.lineLabel ?? "—";
+  const tripTimeFmt = occurrence.tripTime ? fmtTimeBr(occurrence.tripTime) : null;
 
   const driversLines =
     drivers.length > 0
@@ -267,9 +268,10 @@ export function buildOccurrencePdfHtml(args: {
 
   <table class="meta">
     <tr><td class="label">Linha:</td><td class="value">${escapeHtml(lineLabel)}</td></tr>
-    <tr><td class="label">Veículo:</td><td class="value">${escapeHtml(occurrence.vehicleNumber)}</td></tr>
+    ${tripTimeFmt ? `<tr><td class="label">Hor&#225;rio da Viagem:</td><td class="value">${escapeHtml(tripTimeFmt)}</td></tr>` : ""}
+    <tr><td class="label">Ve&#237;culo:</td><td class="value">${escapeHtml(occurrence.vehicleNumber)}</td></tr>
     <tr><td class="label">Motorista:</td><td class="value">${driversLines}</td></tr>
-    <tr><td class="label">Data Relatório:</td><td class="value">${escapeHtml(reportDateLabel)}</td></tr>
+    <tr><td class="label">Data Relat&#243;rio:</td><td class="value">${escapeHtml(reportDateLabel)}</td></tr>
     <tr><td class="label">Data da viagem:</td><td class="value">${escapeHtml(tripDateLabel)}</td></tr>
   </table>
 
