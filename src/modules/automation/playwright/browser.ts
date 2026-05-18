@@ -7,7 +7,7 @@ const AUTH_FILE = path.resolve(process.cwd(), 'auth.json')
 
 export async function createBrowser() {
   return chromium.launch({
-    headless: false, // alterar para true em produção
+    headless: true,
   })
 }
 

@@ -64,11 +64,12 @@ export async function automateOccurrence(payload: OccurrencePayload): Promise<{ 
 
   // Busca link do relatório sempre; medida só para advertência
   const relatoriosFolderId = payload.relatorios_folder_id || process.env['GOOGLE_DRIVE_FOLDER_ID']!
+  const medidasFolderId = payload.medidas_folder_id || process.env['GOOGLE_DRIVE_MEDIDAS_FOLDER_ID']!
 
   const [link_relatorio, link_medida] = await Promise.all([
     findReportLink({ ...driveParams, folderId: relatoriosFolderId, typeFilter: 'PARADA_IRREG' }),
     advertencia
-      ? findReportLink({ ...driveParams, folderId: process.env['GOOGLE_DRIVE_MEDIDAS_FOLDER_ID']! })
+      ? findReportLink({ ...driveParams, folderId: medidasFolderId })
       : Promise.resolve(null),
   ])
 
@@ -115,12 +116,14 @@ export async function fillMedidaService(payload: OccurrencePayload): Promise<voi
   const baseCode = driver1.baseCode ?? occ.baseCode ?? ''
   const eventDate = occ.eventDate as string
 
+  const medidasFolderId = payload.medidas_folder_id || process.env['GOOGLE_DRIVE_MEDIDAS_FOLDER_ID']!
+
   // Busca link da medida no Drive (agora deve existir)
   const link_medida = await findReportLink({
     matricula,
     motoristaNome,
     base: baseCode,
-    folderId: process.env['GOOGLE_DRIVE_MEDIDAS_FOLDER_ID']!,
+    folderId: medidasFolderId,
     ...(eventDate ? { eventDate } : {}),
   })
 
