@@ -343,6 +343,14 @@ export async function markFaltaTratativa(id: string): Promise<void> {
   if (error) throw error
 }
 
+export async function clearFaltaTratativa(id: string): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from('occurrences')
+    .update({ falta_tratativa: false })
+    .eq('id', id)
+  if (error) throw error
+}
+
 export async function updateOccurrence(id: string, data: any) {
   const { error } = await supabaseAdmin
     .from("occurrences")

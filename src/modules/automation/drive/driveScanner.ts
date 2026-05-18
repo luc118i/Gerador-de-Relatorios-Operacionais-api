@@ -57,14 +57,24 @@ function normalize(s: string): string {
  * Padrão esperado: "{matricula} - {nome} - {base} - PARADA_IRREGULAR - {data}"
  * Retorna o webViewLink ou null se não encontrado.
  */
-/** Converte "DD.MM.YY" do nome do arquivo para "YYYY-MM-DD". Retorna null se inválido. */
+/**
+ * Normaliza um segmento de data do nome do arquivo para "YYYY-MM-DD".
+ * Suporta dois formatos:
+ *   - "DD.MM.YY"   → ex: "18.05.26"  → "2026-05-18"  (formato manual antigo)
+ *   - "YYYY.MM.DD" → ex: "2026.05.18" → "2026-05-18"  (formato gerado pelo nosso PDF)
+ */
 function parseDateSegment(segment: string): string | null {
   const parts = segment.split('.')
   if (parts.length < 3) return null
-  const [dd, mm, yy] = parts
-  if (!dd || !mm || !yy) return null
-  const year = parseInt(yy) < 50 ? `20${yy}` : `19${yy}`
-  return `${year}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`
+  const [a, b, c] = parts
+  if (!a || !b || !c) return null
+
+  // YYYY.MM.DD: primeiro segmento tem 4 dígitos
+  if (a.length === 4) return `${a}-${b.padStart(2, '0')}-${c.padStart(2, '0')}`
+
+  // DD.MM.YY: a=dia, b=mês, c=ano (2 dígitos)
+  const year = parseInt(c) < 50 ? `20${c}` : `19${c}`
+  return `${year}-${b.padStart(2, '0')}-${a.padStart(2, '0')}`
 }
 
 export async function findReportLink(params: {
@@ -72,62 +82,49 @@ export async function findReportLink(params: {
   motoristaNome: string
   base: string
   folderId?: string
-  eventDate?: string  // YYYY-MM-DD — quando fornecido, valida a data do nome do arquivo
+  eventDate?: string   // YYYY-MM-DD
+  typeFilter?: string  // trecho esperado no nome do arquivo, ex: 'PARADA_IRREG'
 }): Promise<string | null> {
   const drive = getDriveClient()
-  const { matricula, motoristaNome, base, folderId = FOLDER_ID, eventDate } = params
+  const { matricula, motoristaNome, folderId = FOLDER_ID, eventDate, typeFilter } = params
 
-  const firstName = normalize(motoristaNome).split(' ')[0] ?? ''
+  // Passo 1 — busca todos os arquivos da matrícula na pasta
+  const searchTerm = matricula || normalize(motoristaNome).split(' ')[0]
 
   const res = await drive.files.list({
-    q: `'${folderId}' in parents and name contains 'PARADA_IRREGULAR' and name contains '${firstName}' and trashed = false`,
+    q: `'${folderId}' in parents and name contains '${searchTerm}' and trashed = false`,
     fields: 'files(id, name, webViewLink)',
     orderBy: 'createdTime desc',
     pageSize: 50,
   })
 
   const files = res.data.files ?? []
-  const normNome = normalize(motoristaNome)
-  const normBase = normalize(base)
+  console.log(`[driveScanner] ${files.length} arquivo(s) encontrado(s) para "${searchTerm}" na pasta ${folderId}`)
 
+  // Passo 2 — filtra por tipo e data
   for (const file of files) {
     if (!file.name) continue
     const normFile = normalize(file.name.replace(/\.[^.]+$/, ''))
     const parts = normFile.split(' - ').map(p => p.trim())
 
-    const nomeMatch = parts.some(p => p.includes(normNome) || normNome.includes(p))
-    const baseMatch = parts.some(p => p.includes(normBase) || normBase.includes(p))
-    const matriculaMatch = !matricula || parts[0] === matricula.trim()
+    // Filtra por tipo (ex: PARADA_IRREG)
+    if (typeFilter && !normFile.includes(normalize(typeFilter))) {
+      console.log(`[driveScanner] ignorado (tipo): ${file.name}`)
+      continue
+    }
 
-    // Valida data do arquivo quando eventDate é fornecido
+    // Filtra por data
     if (eventDate) {
       const dateSegment = parts[parts.length - 1] ?? ''
       const fileDate = parseDateSegment(dateSegment)
-      if (fileDate !== eventDate) continue
-    }
-
-    if (nomeMatch && baseMatch && matriculaMatch) {
-      return file.webViewLink ?? null
-    }
-  }
-
-  // Fallback sem matrícula (caso não tenha sido extraída)
-  if (matricula) {
-    for (const file of files) {
-      if (!file.name) continue
-      const normFile = normalize(file.name.replace(/\.[^.]+$/, ''))
-      const parts = normFile.split(' - ').map(p => p.trim())
-      const nomeMatch = parts.some(p => p.includes(normNome) || normNome.includes(p))
-      const baseMatch = parts.some(p => p.includes(normBase) || normBase.includes(p))
-
-      if (eventDate) {
-        const dateSegment = parts[parts.length - 1] ?? ''
-        const fileDate = parseDateSegment(dateSegment)
-        if (fileDate !== eventDate) continue
+      if (fileDate !== eventDate) {
+        console.log(`[driveScanner] ignorado (data ${fileDate} ≠ ${eventDate}): ${file.name}`)
+        continue
       }
-
-      if (nomeMatch && baseMatch) return file.webViewLink ?? null
     }
+
+    console.log(`[driveScanner] match encontrado: ${file.name}`)
+    return file.webViewLink ?? null
   }
 
   return null
