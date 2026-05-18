@@ -2,38 +2,42 @@ import type { Request, Response } from 'express'
 import { automateOccurrence, fillMedidaService } from './automation.service.js'
 import type { OccurrencePayload } from './types/automation.types.js'
 
-export async function disciplinaryController(req: Request, res: Response): Promise<void> {
-  const { occurrence_id } = req.body as OccurrencePayload
+function apiError(res: Response, status: number, message: string, code = 'AUTOMATION_ERROR') {
+  res.status(status).json({ error: { code, message } })
+}
 
-  if (!occurrence_id) {
-    res.status(400).json({ error: 'Campo "occurrence_id" é obrigatório.' })
+export async function disciplinaryController(req: Request, res: Response): Promise<void> {
+  const payload = req.body as OccurrencePayload
+
+  if (!payload.occurrence_id) {
+    apiError(res, 400, 'Campo "occurrence_id" é obrigatório.', 'MISSING_FIELD')
     return
   }
 
   try {
-    const { faltaTratativa } = await automateOccurrence({ occurrence_id })
+    const { faltaTratativa } = await automateOccurrence(payload)
     res.status(200).json({ success: true, message: 'Ocorrência registrada no RIZER com sucesso.', faltaTratativa })
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Erro interno na automação.'
     console.error('[controller] Erro na automação:', message)
-    res.status(500).json({ error: message })
+    apiError(res, 500, message)
   }
 }
 
 export async function fillMedidaController(req: Request, res: Response): Promise<void> {
-  const { occurrence_id } = req.body as OccurrencePayload
+  const payload = req.body as OccurrencePayload
 
-  if (!occurrence_id) {
-    res.status(400).json({ error: 'Campo "occurrence_id" é obrigatório.' })
+  if (!payload.occurrence_id) {
+    apiError(res, 400, 'Campo "occurrence_id" é obrigatório.', 'MISSING_FIELD')
     return
   }
 
   try {
-    await fillMedidaService({ occurrence_id })
+    await fillMedidaService(payload)
     res.status(200).json({ success: true, message: 'Link da medida preenchido no RIZER com sucesso.' })
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Erro interno na automação.'
     console.error('[controller] Erro ao preencher medida:', message)
-    res.status(500).json({ error: message })
+    apiError(res, 500, message)
   }
 }
