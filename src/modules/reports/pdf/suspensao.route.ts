@@ -10,6 +10,7 @@ import { findLocalById } from "../../locais/locais.repo.js";
 import type { PdfOccurrence, PdfDriver } from "./pdf.types.js";
 import { uploadPrivatePdf, createSignedUrl } from "./pdf.storage.js";
 import { upsertSuspensao, getSuspensaoByOccurrenceId } from "./suspensao.repo.js";
+import { markSuspensaoFlags } from "../../occurrences/occurrences.repo.js";
 
 const BUCKET = process.env.SUPABASE_REPORTS_BUCKET ?? "reports";
 const SIGNED_URL_TTL = 60 * 60 * 24 * 7; // 7 dias
@@ -88,6 +89,7 @@ export async function getSuspensaoPdfHandler(req: Request, res: Response) {
     const storagePath = `suspensoes/${occurrenceId}/suspensao.pdf`;
     await uploadPrivatePdf(BUCKET, storagePath, pdfBuffer);
     await upsertSuspensao(occurrenceId, dataInicioSuspensao, quantidadeDias, storagePath);
+    await markSuspensaoFlags(occurrenceId);
 
     const signedUrl = await createSignedUrl(BUCKET, storagePath, SIGNED_URL_TTL);
     const filename = buildSuspensaoFileName(occurrence, drivers, tipoOcorrencia);

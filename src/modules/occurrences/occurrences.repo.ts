@@ -107,6 +107,10 @@ export async function listOccurrencesByDay(date: string) {
       show_section_tripulacao,
       show_section_passageiros,
       devolutiva_before_evidences,
+      rizer_registered,
+      advertencia,
+      suspensao,
+      falta_tratativa,
       created_at,
       occurrence_types:occurrence_types (code, title),
       occurrence_drivers (position, driver_id, registry, name, base_code),
@@ -165,6 +169,10 @@ export async function listOccurrencesByDay(date: string) {
       const s = arr[0] ?? null;
       return s ? { dataInicio: s.data_inicio as string, dias: s.dias as number } : null;
     })(),
+    rizerRegistered: o.rizer_registered ?? false,
+    advertencia: o.advertencia ?? true,
+    suspensaoDisciplinar: o.suspensao ?? false,
+    faltaTratativa: o.falta_tratativa ?? false,
   }));
 }
 
@@ -232,9 +240,14 @@ export async function getOccurrenceById(id: string) {
       devolutiva_before_evidences,
       trip_time,
       created_at,
+      rizer_registered,
+      advertencia,
+      suspensao,
+      falta_tratativa,
       occurrence_types:occurrence_types (code, title),
       occurrence_drivers (position, driver_id, registry, name, base_code),
-      occurrence_evidences (id, storage_path, caption, link_texto, link_url, sort_order)
+      occurrence_evidences (id, storage_path, caption, link_texto, link_url, sort_order),
+      suspensoes (data_inicio, dias)
     `,
     )
     .eq("id", id)
@@ -294,7 +307,40 @@ export async function getOccurrenceById(id: string) {
         linkTexto: e.link_texto ?? "",
         linkUrl: e.link_url ?? "",
       })),
+    rizerRegistered: o.rizer_registered ?? false,
+    advertencia: o.advertencia ?? true,
+    suspensaoDisciplinar: o.suspensao ?? false,
+    faltaTratativa: o.falta_tratativa ?? false,
+    suspensao: (() => {
+      const arr = Array.isArray(o.suspensoes) ? o.suspensoes : []
+      const s = arr[0] ?? null
+      return s ? { dataInicio: s.data_inicio as string, dias: s.dias as number } : null
+    })(),
   };
+}
+
+export async function markRizerRegistered(id: string): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from('occurrences')
+    .update({ rizer_registered: true })
+    .eq('id', id)
+  if (error) throw error
+}
+
+export async function markSuspensaoFlags(id: string): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from('occurrences')
+    .update({ advertencia: false, suspensao: true })
+    .eq('id', id)
+  if (error) throw error
+}
+
+export async function markFaltaTratativa(id: string): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from('occurrences')
+    .update({ falta_tratativa: true })
+    .eq('id', id)
+  if (error) throw error
 }
 
 export async function updateOccurrence(id: string, data: any) {
@@ -414,10 +460,11 @@ export async function listReportTitles(): Promise<string[]> {
 
   const { data, error } = await supabaseAdmin
     .from("occurrences")
-    .select("report_title")
+    .select("report_title, created_at")
     .eq("type_id", typeRow.id)
     .not("report_title", "is", null)
-    .neq("report_title", "");
+    .neq("report_title", "")
+    .order("created_at", { ascending: false });
 
   if (error) {
     console.warn("[listReportTitles]", error.message);
@@ -433,5 +480,5 @@ export async function listReportTitles(): Promise<string[]> {
       result.push(title);
     }
   }
-  return result.sort();
+  return result; // already ordered most-recent → oldest
 }

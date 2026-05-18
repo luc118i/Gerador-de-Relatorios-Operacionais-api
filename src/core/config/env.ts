@@ -14,4 +14,10 @@ export const ENV = {
   SIGNED_URL_TTL_SECONDS: Number(
     process.env.SUPABASE_SIGNED_URL_TTL_SECONDS ?? 3600,
   ),
+  // Automação disciplinar — validadas no service, não no startup
+  RIZER_LOGIN_URL: process.env["RIZER_LOGIN_URL"] ?? "",
+  RIZER_DISCIPLINARY_URL: process.env["RIZER_DISCIPLINARY_URL"] ?? "",
+  RIZER_EMAIL: process.env["RIZER_EMAIL"] ?? "",
+  RIZER_PASSWORD: process.env["RIZER_PASSWORD"] ?? "",
+  GROQ_API_KEY: process.env["GROQ_API_KEY"] ?? "",
 };
