@@ -57,42 +57,24 @@ function normalize(s: string): string {
  * Padrão esperado: "{matricula} - {nome} - {base} - PARADA_IRREGULAR - {data}"
  * Retorna o webViewLink ou null se não encontrado.
  */
-/**
- * Normaliza um segmento de data do nome do arquivo para "YYYY-MM-DD".
- * Suporta dois formatos:
- *   - "DD.MM.YY"   → ex: "18.05.26"  → "2026-05-18"  (formato manual antigo)
- *   - "YYYY.MM.DD" → ex: "2026.05.18" → "2026-05-18"  (formato gerado pelo nosso PDF)
- */
-function parseDateSegment(segment: string): string | null {
-  const parts = segment.split('.')
-  if (parts.length < 3) return null
-  const [a, b, c] = parts
-  if (!a || !b || !c) return null
-
-  // YYYY.MM.DD: primeiro segmento tem 4 dígitos
-  if (a.length === 4) return `${a}-${b.padStart(2, '0')}-${c.padStart(2, '0')}`
-
-  // DD.MM.YY: a=dia, b=mês, c=ano (2 dígitos)
-  const year = parseInt(c) < 50 ? `20${c}` : `19${c}`
-  return `${year}-${b.padStart(2, '0')}-${a.padStart(2, '0')}`
-}
-
 export async function findReportLink(params: {
   matricula: string
   motoristaNome: string
   base: string
   folderId?: string
-  eventDate?: string   // YYYY-MM-DD
+  eventDate?: string   // YYYY-MM-DD — arquivo deve ter sido criado nessa data ou depois
   typeFilter?: string  // trecho esperado no nome do arquivo, ex: 'PARADA_IRREG'
 }): Promise<string | null> {
   const drive = getDriveClient()
   const { matricula, motoristaNome, folderId = FOLDER_ID, eventDate, typeFilter } = params
 
-  // Passo 1 — busca todos os arquivos da matrícula na pasta
   const searchTerm = matricula || normalize(motoristaNome).split(' ')[0]
 
+  // Inclui filtro de data de criação no Drive: apenas arquivos criados a partir do dia do evento
+  const dateFilter = eventDate ? ` and createdTime >= '${eventDate}T00:00:00'` : ''
+
   const res = await drive.files.list({
-    q: `'${folderId}' in parents and name contains '${searchTerm}' and trashed = false`,
+    q: `'${folderId}' in parents and name contains '${searchTerm}' and trashed = false${dateFilter}`,
     fields: 'files(id, name, webViewLink)',
     orderBy: 'createdTime desc',
     pageSize: 50,
@@ -101,26 +83,14 @@ export async function findReportLink(params: {
   const files = res.data.files ?? []
   console.log(`[driveScanner] ${files.length} arquivo(s) encontrado(s) para "${searchTerm}" na pasta ${folderId}`)
 
-  // Passo 2 — filtra por tipo e data
+  // Filtra por tipo (ex: PARADA_IRREG) no nome do arquivo
   for (const file of files) {
     if (!file.name) continue
     const normFile = normalize(file.name.replace(/\.[^.]+$/, ''))
-    const parts = normFile.split(' - ').map(p => p.trim())
 
-    // Filtra por tipo (ex: PARADA_IRREG)
     if (typeFilter && !normFile.includes(normalize(typeFilter))) {
       console.log(`[driveScanner] ignorado (tipo): ${file.name}`)
       continue
-    }
-
-    // Filtra por data
-    if (eventDate) {
-      const dateSegment = parts[parts.length - 1] ?? ''
-      const fileDate = parseDateSegment(dateSegment)
-      if (fileDate !== eventDate) {
-        console.log(`[driveScanner] ignorado (data ${fileDate} ≠ ${eventDate}): ${file.name}`)
-        continue
-      }
     }
 
     console.log(`[driveScanner] match encontrado: ${file.name}`)
