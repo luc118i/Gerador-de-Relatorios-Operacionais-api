@@ -6,10 +6,10 @@ import { createDisciplinary } from './playwright/disciplinary.js'
 import { findRizerOccurrenceId } from './playwright/findOccurrenceInRizer.js'
 import { fillMedidaOnEdit } from './playwright/editMedida.js'
 import { takeErrorScreenshot } from './playwright/helpers.js'
-import { getOccurrenceById, markRizerRegistered, markFaltaTratativa, clearFaltaTratativa } from '../occurrences/occurrences.repo.js'
+import { getOccurrenceById, markRizerRegistered, markFaltaTratativa, clearFaltaTratativa, saveRizerData } from '../occurrences/occurrences.repo.js'
 import type { OccurrencePayload, OccurrenceData } from './types/automation.types.js'
 
-async function runAutomation(occurrenceData: OccurrenceData): Promise<void> {
+async function runAutomation(occurrenceData: OccurrenceData): Promise<string | null> {
   const { browser, context } = await createContextWithSession()
   const page = await context.newPage()
 
@@ -24,7 +24,7 @@ async function runAutomation(occurrenceData: OccurrenceData): Promise<void> {
       await page.waitForLoadState('domcontentloaded')
     }
 
-    await createDisciplinary(page, occurrenceData)
+    return await createDisciplinary(page, occurrenceData)
   } catch (err) {
     await takeErrorScreenshot(page, 'service')
     throw err
@@ -66,15 +66,15 @@ export async function automateOccurrence(payload: OccurrencePayload): Promise<{ 
   const relatoriosFolderId = payload.relatorios_folder_id || process.env['GOOGLE_DRIVE_FOLDER_ID']!
   const medidasFolderId = payload.medidas_folder_id || process.env['GOOGLE_DRIVE_MEDIDAS_FOLDER_ID']!
 
-  const [link_relatorio, link_medida] = await Promise.all([
+  const [matchRelatorio, matchMedida] = await Promise.all([
     findReportLink({ ...driveParams, folderId: relatoriosFolderId, typeFilter: 'PARADA_IRREG' }),
     advertencia
       ? findReportLink({ ...driveParams, folderId: medidasFolderId })
       : Promise.resolve(null),
   ])
 
-  if (!link_relatorio) throw new Error(`Relatório não encontrado no Drive para "${motoristaNome}" (${matricula}) — data: ${occ.eventDate}. Verifique se o arquivo foi enviado para a pasta correta.`)
-  if (advertencia && !link_medida) console.warn(`[service] Medida não encontrada no Drive para "${motoristaNome}"`)
+  if (!matchRelatorio) throw new Error(`Relatório não encontrado no Drive para "${motoristaNome}" (${matricula}) — data: ${occ.eventDate}. Verifique se o arquivo foi enviado para a pasta correta.`)
+  if (advertencia && !matchMedida) console.warn(`[service] Medida não encontrada no Drive para "${motoristaNome}"`)
 
   const occurrenceData: OccurrenceData = {
     motorista_nome: motoristaNome,
@@ -84,19 +84,22 @@ export async function automateOccurrence(payload: OccurrencePayload): Promise<{ 
     data_ocorrencia: `${occ.eventDate}T00:00:00`,
     ...responsible,
     tipo_ocorrencia: 'PARADA IRREGULAR',
-    link_relatorio: link_relatorio ?? '',
-    link_medida:    link_medida ?? '',
+    link_relatorio: matchRelatorio.link,
+    link_medida:    matchMedida?.link ?? '',
     advertencia,
   }
 
-  await runAutomation(occurrenceData)
+  const rizerId = await runAutomation(occurrenceData)
 
-  const faltaTratativa = advertencia && !link_medida
+  const faltaTratativa = advertencia && !matchMedida
 
-  console.log(`[service] advertencia=${advertencia} link_medida="${link_medida}" faltaTratativa=${faltaTratativa}`)
+  console.log(`[service] advertencia=${advertencia} link_medida="${matchMedida?.link}" faltaTratativa=${faltaTratativa}`)
 
-  // Marca registrado primeiro (crítico), depois falta_tratativa (secundário)
   await markRizerRegistered(occurrence_id)
+  await saveRizerData(occurrence_id, {
+    rizerId,
+    driveFileNome: matchRelatorio.fileName,
+  })
   if (faltaTratativa) await markFaltaTratativa(occurrence_id)
 
   return { faltaTratativa }
@@ -115,19 +118,20 @@ export async function fillMedidaService(payload: OccurrencePayload): Promise<voi
   const motoristaNome = driver1.name ?? ''
   const baseCode = driver1.baseCode ?? occ.baseCode ?? ''
   const eventDate = occ.eventDate as string
+  const rizerId = (occ as any).rizerId as string | null
 
   const medidasFolderId = payload.medidas_folder_id || process.env['GOOGLE_DRIVE_MEDIDAS_FOLDER_ID']!
 
-  // Busca link da medida no Drive (agora deve existir)
-  const link_medida = await findReportLink({
+  const matchMedida = await findReportLink({
     matricula,
     motoristaNome,
     base: baseCode,
     folderId: medidasFolderId,
+    fileName: (occ as any).driveFileNome ?? undefined,
     ...(eventDate ? { eventDate } : {}),
   })
 
-  if (!link_medida) throw new Error('Link da medida ainda não encontrado no Drive.')
+  if (!matchMedida) throw new Error('Link da medida ainda não encontrado no Drive.')
 
   const { browser, context } = await createContextWithSession()
   const page = await context.newPage()
@@ -141,12 +145,15 @@ export async function fillMedidaService(payload: OccurrencePayload): Promise<voi
       await login(page, context)
     }
 
-    const tipoOcorrencia = (occ as any).typeTitle ?? 'PARADA IRREGULAR'
+    let rizerOccId = rizerId
+    if (!rizerOccId) {
+      rizerOccId = await findRizerOccurrenceId(page, { matricula, tipoOcorrencia: 'PARADA IRREGULAR', eventDate })
+      console.log(`[service] Ocorrência encontrada no RIZER via busca: ID ${rizerOccId}`)
+    } else {
+      console.log(`[service] Usando rizer_id salvo: ${rizerOccId}`)
+    }
 
-    const rizerId = await findRizerOccurrenceId(page, { matricula, tipoOcorrencia, eventDate })
-    console.log(`[service] Ocorrência encontrada no RIZER: ID ${rizerId}`)
-
-    await fillMedidaOnEdit(page, rizerId, link_medida)
+    await fillMedidaOnEdit(page, rizerOccId, matchMedida.link)
 
     await clearFaltaTratativa(occurrence_id)
     console.log(`[service] falta_tratativa removida para ocorrência ${occurrence_id}`)

@@ -241,6 +241,8 @@ export async function getOccurrenceById(id: string) {
       trip_time,
       created_at,
       rizer_registered,
+      rizer_id,
+      drive_file_nome,
       advertencia,
       suspensao,
       falta_tratativa,
@@ -308,6 +310,8 @@ export async function getOccurrenceById(id: string) {
         linkUrl: e.link_url ?? "",
       })),
     rizerRegistered: o.rizer_registered ?? false,
+    rizerId: o.rizer_id ?? null,
+    driveFileNome: o.drive_file_nome ?? null,
     advertencia: o.advertencia ?? true,
     suspensaoDisciplinar: o.suspensao ?? false,
     faltaTratativa: o.falta_tratativa ?? false,
@@ -323,6 +327,23 @@ export async function markRizerRegistered(id: string): Promise<void> {
   const { error } = await supabaseAdmin
     .from('occurrences')
     .update({ rizer_registered: true })
+    .eq('id', id)
+  if (error) throw error
+}
+
+export async function saveRizerData(id: string, data: {
+  rizerId?: string | null
+  driveFileNome?: string | null
+}): Promise<void> {
+  const update: Record<string, unknown> = {}
+  if (data.rizerId !== undefined)      update.rizer_id        = data.rizerId
+  if (data.driveFileNome !== undefined) update.drive_file_nome = data.driveFileNome
+
+  if (Object.keys(update).length === 0) return
+
+  const { error } = await supabaseAdmin
+    .from('occurrences')
+    .update(update)
     .eq('id', id)
   if (error) throw error
 }
@@ -349,6 +370,15 @@ export async function clearFaltaTratativa(id: string): Promise<void> {
     .update({ falta_tratativa: false })
     .eq('id', id)
   if (error) throw error
+}
+
+export async function countFaltaTratativa(): Promise<number> {
+  const { count, error } = await supabaseAdmin
+    .from('occurrences')
+    .select('*', { count: 'exact', head: true })
+    .eq('falta_tratativa', true)
+  if (error) throw error
+  return count ?? 0
 }
 
 export async function updateOccurrence(id: string, data: any) {

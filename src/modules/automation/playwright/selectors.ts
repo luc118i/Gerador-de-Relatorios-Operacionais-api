@@ -10,6 +10,6 @@ export const ids = {
   advertencia:      'input_advertencia',
   suspensao:        'input_suspencao',
   linkRelatorio:    'input_link_relatorio',
-  linkMedida:       'input_link_medida',   // confirmar ID real no DOM se necessário
+  linkMedida:       'input_link_da_medida',
   visibilidade:     'r_auth',
 }

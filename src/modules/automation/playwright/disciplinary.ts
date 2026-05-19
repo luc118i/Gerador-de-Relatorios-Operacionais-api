@@ -9,7 +9,7 @@ class MotoristaNotFoundError extends Error {
 }
 
 function formatDate(iso: string): string {
-  const [y, m, d] = iso.split('-')
+  const [y, m, d] = iso.split('T')[0]!.split('-')
   return `${d}/${m}/${y}`
 }
 
@@ -109,7 +109,7 @@ async function fillTextInput(page: Page, id: string, value: string): Promise<voi
   await page.waitForTimeout(200)
 }
 
-export async function createDisciplinary(page: Page, data: OccurrenceData): Promise<void> {
+export async function createDisciplinary(page: Page, data: OccurrenceData): Promise<string | null> {
   await page.goto(process.env['RIZER_DISCIPLINARY_URL']!)
   await page.waitForLoadState('networkidle')
 
@@ -207,6 +207,12 @@ export async function createDisciplinary(page: Page, data: OccurrenceData): Prom
     await saveBtn.waitFor({ state: 'visible', timeout: 10000 })
     await saveBtn.click()
     await page.waitForLoadState('networkidle', { timeout: 20000 })
+
+    // Captura o ID do registro criado na URL de redirect
+    const urlMatch = page.url().match(/\/ocorrencias_disciplinares\/(\d+)/)
+    const rizerId = urlMatch?.[1] ?? null
+    console.log(`[disciplinary] ID capturado no RIZER: ${rizerId}`)
+    return rizerId
   } catch (err) {
     await takeErrorScreenshot(page, 'disciplinary')
     throw err

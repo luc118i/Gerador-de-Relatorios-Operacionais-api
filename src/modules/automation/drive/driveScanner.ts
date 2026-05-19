@@ -5,11 +5,28 @@ const SCOPES = ['https://www.googleapis.com/auth/drive.readonly']
 const FOLDER_ID = process.env['GOOGLE_DRIVE_FOLDER_ID']!
 
 function getDriveClient() {
-  const auth = new google.auth.JWT({
-    email: process.env['GOOGLE_DRIVE_CLIENT_EMAIL']!,
-    key: process.env['GOOGLE_DRIVE_PRIVATE_KEY']!.replace(/\\n/g, '\n'),
-    scopes: SCOPES,
-  })
+  const raw = process.env['GOOGLE_SERVICE_ACCOUNT_JSON']
+  const email = process.env['GOOGLE_DRIVE_CLIENT_EMAIL']
+  const key = process.env['GOOGLE_DRIVE_PRIVATE_KEY']
+
+  let clientEmail: string
+  let privateKey: string
+
+  const rawB64 = process.env['GOOGLE_SERVICE_ACCOUNT_JSON_B64']
+  if (rawB64 || raw) {
+    const json = rawB64 ? Buffer.from(rawB64, 'base64').toString('utf-8') : raw!
+    const creds = JSON.parse(json)
+    clientEmail = creds.client_email
+    privateKey = creds.private_key
+    if (!clientEmail || !privateKey) throw new Error('Credenciais do Google malformadas: faltam client_email ou private_key')
+  } else if (email && key) {
+    clientEmail = email
+    privateKey = key.replace(/\\n/g, '\n')
+  } else {
+    throw new Error('Credenciais do Google Drive ausentes: defina GOOGLE_SERVICE_ACCOUNT_JSON ou GOOGLE_DRIVE_CLIENT_EMAIL + GOOGLE_DRIVE_PRIVATE_KEY')
+  }
+
+  const auth = new google.auth.JWT({ email: clientEmail, key: privateKey, scopes: SCOPES })
   return google.drive({ version: 'v3', auth })
 }
 
@@ -57,6 +74,11 @@ function normalize(s: string): string {
  * Padrão esperado: "{matricula} - {nome} - {base} - PARADA_IRREGULAR - {data}"
  * Retorna o webViewLink ou null se não encontrado.
  */
+export interface DriveMatch {
+  link: string
+  fileName: string
+}
+
 export async function findReportLink(params: {
   matricula: string
   motoristaNome: string
@@ -64,14 +86,28 @@ export async function findReportLink(params: {
   folderId?: string
   eventDate?: string   // YYYY-MM-DD — arquivo deve ter sido criado nessa data ou depois
   typeFilter?: string  // trecho esperado no nome do arquivo, ex: 'PARADA_IRREG'
-}): Promise<string | null> {
+  fileName?: string    // nome exato do arquivo para busca direta
+}): Promise<DriveMatch | null> {
   const drive = getDriveClient()
-  const { matricula, motoristaNome, folderId = FOLDER_ID, eventDate, typeFilter } = params
+  const { matricula, motoristaNome, folderId = FOLDER_ID, eventDate, typeFilter, fileName } = params
+
+  const dateFilter = eventDate ? ` and createdTime >= '${eventDate}T00:00:00'` : ''
+
+  // Busca direta pelo nome do arquivo se disponível
+  if (fileName) {
+    const res = await drive.files.list({
+      q: `'${folderId}' in parents and name = '${fileName}' and trashed = false`,
+      fields: 'files(id, name, webViewLink)',
+      pageSize: 1,
+    })
+    const file = res.data.files?.[0]
+    if (file?.webViewLink && file.name) {
+      console.log(`[driveScanner] match direto por nome: ${file.name}`)
+      return { link: file.webViewLink, fileName: file.name }
+    }
+  }
 
   const searchTerm = matricula || normalize(motoristaNome).split(' ')[0]
-
-  // Inclui filtro de data de criação no Drive: apenas arquivos criados a partir do dia do evento
-  const dateFilter = eventDate ? ` and createdTime >= '${eventDate}T00:00:00'` : ''
 
   const res = await drive.files.list({
     q: `'${folderId}' in parents and name contains '${searchTerm}' and trashed = false${dateFilter}`,
@@ -83,7 +119,6 @@ export async function findReportLink(params: {
   const files = res.data.files ?? []
   console.log(`[driveScanner] ${files.length} arquivo(s) encontrado(s) para "${searchTerm}" na pasta ${folderId}`)
 
-  // Filtra por tipo (ex: PARADA_IRREG) no nome do arquivo
   for (const file of files) {
     if (!file.name) continue
     const normFile = normalize(file.name.replace(/\.[^.]+$/, ''))
@@ -94,7 +129,7 @@ export async function findReportLink(params: {
     }
 
     console.log(`[driveScanner] match encontrado: ${file.name}`)
-    return file.webViewLink ?? null
+    return { link: file.webViewLink ?? '', fileName: file.name }
   }
 
   return null

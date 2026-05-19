@@ -19,15 +19,8 @@ export async function fillMedidaOnEdit(page: Page, rizerId: string, linkMedida: 
     await field.fill(linkMedida)
     await page.waitForTimeout(300)
 
-    // Tenta os possíveis rótulos do botão de salvar no formulário de edição
-    const saveBtn = page.locator([
-      'button[type="submit"]:has-text("Atualizar")',
-      'button[type="submit"]:has-text("Salvar")',
-      'button.form-group-btn-add-cadastrar',
-      'button[type="submit"]',
-    ].join(', ')).first()
-
-    await saveBtn.waitFor({ state: 'visible', timeout: 10000 })
+    const saveBtn = page.getByRole('button', { name: /Salvar|Atualizar/i }).last()
+    await saveBtn.scrollIntoViewIfNeeded()
     await saveBtn.click()
     await page.waitForLoadState('networkidle', { timeout: 20000 })
   } catch (err) {
