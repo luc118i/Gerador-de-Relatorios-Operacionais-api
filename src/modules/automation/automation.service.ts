@@ -157,7 +157,7 @@ export async function fillMedidaService(payload: OccurrencePayload): Promise<voi
 
     let rizerOccId = rizerId
     if (!rizerOccId) {
-      rizerOccId = await findRizerOccurrenceId(page, { matricula, tipoOcorrencia: 'PARADA IRREGULAR', eventDate })
+      rizerOccId = await findRizerOccurrenceId(page, { matricula, motoristaNome, tipoOcorrencia: 'PARADA IRREGULAR', eventDate })
       console.log(`[service] Ocorrência encontrada no RIZER via busca: ID ${rizerOccId}`)
     } else {
       console.log(`[service] Usando rizer_id salvo: ${rizerOccId}`)

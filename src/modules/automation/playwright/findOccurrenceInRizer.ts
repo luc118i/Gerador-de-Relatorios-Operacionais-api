@@ -9,39 +9,52 @@ import type { Page } from 'playwright'
  */
 export async function findRizerOccurrenceId(page: Page, params: {
   matricula: string
-  tipoOcorrencia: string  // ex: "PARADA IRREGULAR"
-  eventDate?: string      // mantido na assinatura por compatibilidade, não utilizado
+  tipoOcorrencia: string
+  motoristaNome?: string  // fallback quando matrícula não retorna resultado
+  eventDate?: string
 }): Promise<string> {
-  const { matricula, tipoOcorrencia } = params
+  const { matricula, tipoOcorrencia, motoristaNome } = params
   const baseUrl = new URL(process.env['RIZER_DISCIPLINARY_URL']!).origin
 
-  await page.goto(`${baseUrl}/ocorrencias_disciplinares`)
-  await page.waitForLoadState('networkidle')
+  // Termos de busca a tentar em ordem
+  const searchTerms: string[] = []
+  if (matricula) searchTerms.push(matricula)
+  if (motoristaNome) searchTerms.push(motoristaNome.split(' ')[0]!) // primeiro nome
 
-  const searchInput = page.locator('input[type="search"][aria-controls="datatable-no-buttons"]')
-  await searchInput.waitFor({ state: 'visible', timeout: 10000 })
-  await searchInput.fill(matricula)
-  await searchInput.press('Enter')
-  await page.waitForTimeout(1500)
+  for (const term of searchTerms) {
+    await page.goto(`${baseUrl}/ocorrencias_disciplinares`)
+    await page.waitForLoadState('networkidle')
 
-  const rows = page.locator('#datatable-no-buttons tbody tr')
-  const count = await rows.count()
+    const searchInput = page.locator('input[type="search"][aria-controls="datatable-no-buttons"]')
+    await searchInput.waitFor({ state: 'visible', timeout: 10000 })
+    await searchInput.fill(term)
+    await searchInput.press('Enter')
+    await page.waitForTimeout(1500)
 
-  for (let i = 0; i < count; i++) {
-    const row = rows.nth(i)
-    const text = (await row.innerText()).toUpperCase()
+    const rows = page.locator('#datatable-no-buttons tbody tr')
+    const count = await rows.count()
 
-    if (text.includes(tipoOcorrencia.toUpperCase())) {
-      const editHref = await row
-        .locator('a[href*="/ocorrencias_disciplinares/"][href*="/edit"]')
-        .getAttribute('href')
+    for (let i = 0; i < count; i++) {
+      const row = rows.nth(i)
+      const text = (await row.innerText()).toUpperCase()
 
-      const match = editHref?.match(/\/ocorrencias_disciplinares\/(\d+)\/edit/)
-      if (match?.[1]) return match[1]
+      if (text.includes(tipoOcorrencia.toUpperCase())) {
+        const editHref = await row
+          .locator('a[href*="/ocorrencias_disciplinares/"][href*="/edit"]')
+          .getAttribute('href')
+
+        const match = editHref?.match(/\/ocorrencias_disciplinares\/(\d+)\/edit/)
+        if (match?.[1]) {
+          console.log(`[findRizer] Encontrado via termo "${term}": ID ${match[1]}`)
+          return match[1]
+        }
+      }
     }
+
+    console.log(`[findRizer] Nenhum resultado para "${term}", tentando próximo termo...`)
   }
 
   throw new Error(
-    `Ocorrência não encontrada no RIZER: matrícula ${matricula}, tipo "${tipoOcorrencia}"`
+    `Ocorrência não encontrada no RIZER: matrícula "${matricula}", tipo "${tipoOcorrencia}"`
   )
 }
