@@ -21,10 +21,14 @@ WORKDIR /app
 
 COPY package*.json ./
 RUN npm ci
+RUN npx playwright install chromium
 
 COPY . .
 
 RUN npm run build
+
+# Copia arquivos não-TS que o compilador não inclui no dist
+RUN cp -r src/modules/automation/csv dist/modules/automation/csv
 
 ENV NODE_ENV=production
 
