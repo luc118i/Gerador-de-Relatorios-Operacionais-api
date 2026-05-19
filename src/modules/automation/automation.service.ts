@@ -114,11 +114,21 @@ export async function fillMedidaService(payload: OccurrencePayload): Promise<voi
   const driver1 = occ.drivers.find((d: any) => d.position === 1)
   if (!driver1) throw new Error('Motorista principal não encontrado na ocorrência.')
 
-  const matricula = driver1.registry ?? ''
   const motoristaNome = driver1.name ?? ''
   const baseCode = driver1.baseCode ?? occ.baseCode ?? ''
   const eventDate = occ.eventDate as string
   const rizerId = (occ as any).rizerId as string | null
+  const driveFileNome: string | null = (occ as any).driveFileNome ?? null
+
+  // Se matrícula não está cadastrada, tenta extrair do nome do arquivo no Drive
+  let matricula = driver1.registry ?? ''
+  if (!matricula && driveFileNome) {
+    const fromFile = driveFileNome.split(' - ')[0]?.trim()
+    if (fromFile && /^\d+$/.test(fromFile)) {
+      matricula = fromFile
+      console.log(`[service] Matrícula extraída do nome do arquivo: ${matricula}`)
+    }
+  }
 
   const medidasFolderId = payload.medidas_folder_id || process.env['GOOGLE_DRIVE_MEDIDAS_FOLDER_ID']!
 
