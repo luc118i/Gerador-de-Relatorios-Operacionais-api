@@ -8,6 +8,7 @@ import { driversRoutes } from "../../modules/drivers/drivers.routes.js";
 import { aiRoutes } from "../../modules/ai/ai.routes.js";
 import { tripsRoutes } from "../../modules/trips/trips.routes.js";
 import { automationRoutes } from "../../modules/automation/automation.routes.js";
+import { presetsRoutes } from "../../modules/presets/presets.routes.js";
 
 export function registerRoutes(app: Express) {
   occurrencesRoutes(app);
@@ -18,4 +19,5 @@ export function registerRoutes(app: Express) {
   reportsPdfRoutes(app);
   aiRoutes(app);
   automationRoutes(app);
+  presetsRoutes(app);
 }
