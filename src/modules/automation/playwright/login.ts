@@ -1,5 +1,6 @@
 import type { Page, BrowserContext } from 'playwright'
 import { saveSession } from './browser.js'
+import { takeErrorScreenshot } from './helpers.js'
 
 const LOGIN_URL = process.env['RIZER_LOGIN_URL'] ?? ''
 
@@ -24,16 +25,20 @@ export async function login(page: Page, context: BrowserContext): Promise<void> 
 
   await page.click('button[type="submit"]')
 
-  // Aguarda URL mudar para qualquer coisa diferente da página de login
-  await page.waitForURL(
-    url => {
-      const u = url.toString()
-      return u !== loginBase() && u !== loginBase() + '/'
-    },
-    { timeout: 15000 }
-  )
-  await page.waitForLoadState('networkidle')
+  try {
+    await page.waitForURL(
+      url => {
+        const u = url.toString()
+        return u !== loginBase() && u !== loginBase() + '/'
+      },
+      { timeout: 45000 }
+    )
+  } catch (err) {
+    await takeErrorScreenshot(page, 'login')
+    throw new Error(`Login no RIZER falhou — credenciais inválidas ou timeout. URL atual: ${page.url()}`)
+  }
 
+  await page.waitForLoadState('networkidle')
   await saveSession(context)
 }
 
