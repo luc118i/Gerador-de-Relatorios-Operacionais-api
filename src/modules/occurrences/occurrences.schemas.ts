@@ -26,6 +26,7 @@ export const createOccurrenceSchema = z.object({
   tripTime: z.string().nullable().optional().transform((v) => v || null), // horário de partida da viagem (HH:mm)
 
   lineLabel: z.string().nullable().optional(), // opcional (se quiser)
+  occurrenceName: z.string().optional().nullable(), // nome exato no RIZER
 
   // Campos do tipo GENERICO (CCO)
   reportTitle: z.string().optional().nullable(),
