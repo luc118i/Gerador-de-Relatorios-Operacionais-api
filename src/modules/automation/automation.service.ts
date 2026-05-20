@@ -60,7 +60,7 @@ export async function automateOccurrence(payload: OccurrencePayload): Promise<{ 
     ...(eventDate ? { eventDate } : {}),
   }
 
-  const advertencia: boolean = (occ as any).advertencia ?? true
+  const advertencia: boolean = payload.advertencia ?? (occ as any).advertencia ?? true
 
   // Busca link do relatório sempre; medida só para advertência
   const relatoriosFolderId = payload.relatorios_folder_id || process.env['GOOGLE_DRIVE_FOLDER_ID']!
