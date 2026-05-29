@@ -128,7 +128,14 @@ export async function createOccurrence(payload: any) {
         ? String(localIdNum)
         : "";
     const driverBase = driver1.driverId ? await getDriverBaseById(driver1.driverId) : undefined;
-    const linhaStr = payload.lineLabel ?? "";
+    const linhaStr = (() => {
+      const label = payload.lineLabel ?? "";
+      if (!label) return "";
+      const dashIdx = label.indexOf(" - ");
+      const code  = dashIdx >= 0 ? label.slice(0, dashIdx) : label;
+      const route = dashIdx >= 0 ? label.slice(dashIdx + 3) : "";
+      return [code, route, payload.tripTime ?? "", payload.tripSentido ?? ""].join("|");
+    })();
 
     // motorista 1
     await notifyAppsScript({
@@ -267,7 +274,14 @@ export async function updateOccurrence(id: string, payload: any) {
         ? String(localIdNum)
         : "";
     const driverBase = driver1.driverId ? await getDriverBaseById(driver1.driverId) : undefined;
-    const linhaStr = payload.lineLabel ?? "";
+    const linhaStr = (() => {
+      const label = payload.lineLabel ?? "";
+      if (!label) return "";
+      const dashIdx = label.indexOf(" - ");
+      const code  = dashIdx >= 0 ? label.slice(0, dashIdx) : label;
+      const route = dashIdx >= 0 ? label.slice(dashIdx + 3) : "";
+      return [code, route, payload.tripTime ?? "", payload.tripSentido ?? ""].join("|");
+    })();
 
     await notifyAppsScript({
       localId: localIdStr,
