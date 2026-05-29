@@ -6,10 +6,11 @@ import {
   updateEvidenceCaption,
 } from "./evidences.service.js";
 import { getOccurrenceById } from "../occurrences/occurrences.repo.js";
-import { getSignedUrl, uploadFileToBucket, insertEvidenceRow } from "./evidences.repo.js";
+import { getSignedUrl, uploadFileToBucket, insertEvidenceRow, listEvidencesByOccurrence } from "./evidences.repo.js";
 import { renderSuspensaoPdfFromHtml } from "../reports/pdf/pdf.puppeteer.js";
 
 const MAX_FILES = 30;
+const MAX_PHOTOS = 20;
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -32,6 +33,29 @@ export function evidencesRoutes(app: Express) {
 
       if (!files.length)
         return res.status(400).json({ error: "no files uploaded" });
+
+      // Valida limite de fotos antes de gravar qualquer coisa
+      let existingPhotos: Awaited<ReturnType<typeof listEvidencesByOccurrence>> = [];
+      try {
+        const existing = await listEvidencesByOccurrence(occurrenceId);
+        existingPhotos = existing.filter(
+          (e) => !e.storagePath?.toLowerCase().endsWith(".pdf"),
+        );
+      } catch {
+        // Se a query falhar, rejeita por segurança
+        return res.status(500).json({ error: "Falha ao verificar evidências existentes", code: "EVIDENCES_QUERY_FAILED" });
+      }
+
+      const newPhotos = files.filter((f) => !f.mimetype.includes("pdf"));
+
+      console.log(`[upload-evidences] occurrenceId=${occurrenceId} existing=${existingPhotos.length} incoming=${newPhotos.length} limit=${MAX_PHOTOS}`);
+
+      if (existingPhotos.length + newPhotos.length > MAX_PHOTOS) {
+        return res.status(413).json({
+          error: `Limite de ${MAX_PHOTOS} fotos por ocorrência excedido. Já existem ${existingPhotos.length} foto(s) e você está tentando adicionar mais ${newPhotos.length}.`,
+          code: "EVIDENCES_LIMIT",
+        });
+      }
 
       // Metadados opcionais enviados pelo frontend
       let metadata: any[] = [];

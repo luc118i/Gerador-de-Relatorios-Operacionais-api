@@ -43,7 +43,12 @@ export async function buildOccurrencePdf(args: {
     listEvidencesByOccurrence(occurrenceId),
   ] as const);
 
-  if (evidences.length > maxPhotos) {
+  // PDFs de esquema operacional são gravados como evidências mas não contam como fotos
+  const photoEvidences = evidences.filter(
+    (e) => !e.storagePath?.toLowerCase().endsWith(".pdf"),
+  );
+
+  if (photoEvidences.length > maxPhotos) {
     throw new AppError(
       413,
       `Limite de evidências excedido (max ${maxPhotos})`,
@@ -68,7 +73,7 @@ export async function buildOccurrencePdf(args: {
   }
 
   const embedded = await Promise.all(
-    evidences.map(async (e: any) => {
+    photoEvidences.map(async (e: any) => {
       let buf = await downloadPrivateFileAsBuffer(
         EVIDENCES_BUCKET,
         e.storagePath,
