@@ -3,6 +3,7 @@ import { buildOccurrencePdf } from "./pdf.service.js";
 import { downloadPrivateFileAsBuffer } from "./pdf.storage.js";
 import { uploadPdfToDrive, uploadPdfToDriveWithToken, upsertPdfToDriveWithToken } from "./pdf.drive.js";
 import { getOccurrenceForPdf, listDriversByOccurrence } from "./pdf.repo.js";
+import { saveRizerData } from "../../occurrences/occurrences.repo.js";
 import { AppError } from "./pdf.errors.js";
 import type { PdfOccurrence, PdfDriver } from "./pdf.types.js";
 
@@ -101,6 +102,9 @@ export async function sendOccurrenceToDriveHandler(
         ? await upsertPdfToDriveWithToken({ pdfBuffer, fileName, folderId: folderIdFromBody, accessToken })
         : await uploadPdfToDriveWithToken({ pdfBuffer, fileName, folderId: folderIdFromBody, accessToken })
       : await uploadPdfToDrive({ pdfBuffer, fileName });
+
+    // 5. Persiste o nome do arquivo no banco
+    await saveRizerData(occurrenceId, { driveFileNome: driveResult.fileName });
 
     return res.status(200).json({
       data: {

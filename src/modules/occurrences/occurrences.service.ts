@@ -11,6 +11,8 @@ import {
   getLocalIdByNome,
 } from "./occurrences.repo.js";
 
+import { fetchTripById } from "../trips/trips.repo.js";
+
 import { notifyAppsScript } from "../../core/infra/appsScript.service.js";
 
 export async function createOccurrence(payload: any) {
@@ -126,15 +128,27 @@ export async function createOccurrence(payload: any) {
       ? String(payload.placeCode)
       : localIdNum
         ? String(localIdNum)
-        : "";
+        : "0"; // fallback: Apps Script valida campo não-vazio; 0 sinaliza "local não mapeado"
     const driverBase = driver1.driverId ? await getDriverBaseById(driver1.driverId) : undefined;
+    const tripData = (!payload.lineLabel && payload.tripId)
+      ? await fetchTripById(payload.tripId)
+      : null;
     const linhaStr = (() => {
       const label = payload.lineLabel ?? "";
-      if (!label) return "";
-      const dashIdx = label.indexOf(" - ");
-      const code  = dashIdx >= 0 ? label.slice(0, dashIdx) : label;
-      const route = dashIdx >= 0 ? label.slice(dashIdx + 3) : "";
-      return [code, route, payload.tripTime ?? "", payload.tripSentido ?? ""].join("|");
+      let code: string, route: string;
+      if (label) {
+        const dashIdx = label.indexOf(" - ");
+        code  = dashIdx >= 0 ? label.slice(0, dashIdx) : label;
+        route = dashIdx >= 0 ? label.slice(dashIdx + 3) : "";
+      } else if (tripData) {
+        code  = tripData.line_code;
+        route = tripData.line_name;
+      } else {
+        return "";
+      }
+      const time    = payload.tripTime    ?? tripData?.departure_time ?? "";
+      const sentido = payload.tripSentido ?? tripData?.direction      ?? "";
+      return [code, route, time, sentido].join("|");
     })();
 
     // motorista 1
@@ -272,15 +286,27 @@ export async function updateOccurrence(id: string, payload: any) {
       ? String(payload.placeCode)
       : localIdNum
         ? String(localIdNum)
-        : "";
+        : "0"; // fallback: Apps Script valida campo não-vazio; 0 sinaliza "local não mapeado"
     const driverBase = driver1.driverId ? await getDriverBaseById(driver1.driverId) : undefined;
+    const tripData = (!payload.lineLabel && payload.tripId)
+      ? await fetchTripById(payload.tripId)
+      : null;
     const linhaStr = (() => {
       const label = payload.lineLabel ?? "";
-      if (!label) return "";
-      const dashIdx = label.indexOf(" - ");
-      const code  = dashIdx >= 0 ? label.slice(0, dashIdx) : label;
-      const route = dashIdx >= 0 ? label.slice(dashIdx + 3) : "";
-      return [code, route, payload.tripTime ?? "", payload.tripSentido ?? ""].join("|");
+      let code: string, route: string;
+      if (label) {
+        const dashIdx = label.indexOf(" - ");
+        code  = dashIdx >= 0 ? label.slice(0, dashIdx) : label;
+        route = dashIdx >= 0 ? label.slice(dashIdx + 3) : "";
+      } else if (tripData) {
+        code  = tripData.line_code;
+        route = tripData.line_name;
+      } else {
+        return "";
+      }
+      const time    = payload.tripTime    ?? tripData?.departure_time ?? "";
+      const sentido = payload.tripSentido ?? tripData?.direction      ?? "";
+      return [code, route, time, sentido].join("|");
     })();
 
     await notifyAppsScript({
