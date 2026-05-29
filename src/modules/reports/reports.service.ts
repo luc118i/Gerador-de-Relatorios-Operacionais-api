@@ -57,6 +57,17 @@ export async function buildDailyReport(
         o.tripDate,
       )}, identificamos o descumprimento operacional/comercial por parte do condutor, realizando uma parada em local fora do esquema operacional.`,
     );
+    if (o.tratativa) {
+      const LABEL: Record<string, string> = {
+        SUSPEICAO: "Suspeição",
+        ADVERTENCIA: "Advertência",
+        VALE: "Vale",
+        REGISTRO: "Registro",
+      };
+      const tratLabel = LABEL[o.tratativa] ?? o.tratativa;
+      const analista = o.analisadoPor ? ` — Analista: ${o.analisadoPor}` : "";
+      lines.push(`Tratativa: ${tratLabel}${analista}`);
+    }
     lines.push(`-`);
 
     return lines.join("\n");

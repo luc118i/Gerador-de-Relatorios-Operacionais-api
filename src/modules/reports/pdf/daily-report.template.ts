@@ -14,35 +14,30 @@ type DailyOccurrence = {
   speedKmh: number | null;
   drivers: Array<{ position: number; registry?: string | null; name?: string | null; baseCode?: string | null }>;
   evidenceCount: number;
+  tratativa: string | null;
+  analisadoPor: string | null;
+  justificativaRegistro: string | null;
 };
 
 type DailyStats = {
-  score: number;
-  scoreLabel: string;
-  scoreHex: string;
   totalOcc: number;
   totalDrivers: number;
   totalVehicles: number;
-  totalEvidences: number;
+  totalAdvertencias: number;
+  totalSuspeicoes: number;
   byType: Array<{ name: string; count: number }>;
   byBase: Array<{ base: string; count: number }>;
   driverRanking: Array<{ name: string; count: number; base: string }>;
 };
 
 function computeStats(occurrences: DailyOccurrence[]): DailyStats {
-  let score = 10;
-  for (const o of occurrences) {
-    score -= o.typeCode === "EXCESSO_VELOCIDADE" ? 0.8 : 0.4;
-  }
-  score = Math.max(0, Math.round(score * 10) / 10);
-
-  const { label: scoreLabel, hex: scoreHex } = scoreStatus(score);
-
   const driversSet = new Set<string>();
   const vehiclesSet = new Set<string>();
   const basesMap = new Map<string, number>();
   const typesMap = new Map<string, { name: string; count: number }>();
   const driverCountMap = new Map<string, { name: string; count: number; base: string }>();
+  let totalAdvertencias = 0;
+  let totalSuspeicoes = 0;
 
   for (const o of occurrences) {
     vehiclesSet.add(o.vehicleNumber);
@@ -63,6 +58,9 @@ function computeStats(occurrences: DailyOccurrence[]): DailyStats {
       const prev2 = driverCountMap.get(key) ?? { name: d1.name ?? key, count: 0, base: d1.baseCode ?? o.baseCode ?? "—" };
       driverCountMap.set(key, { ...prev2, count: prev2.count + 1 });
     }
+
+    if (o.tratativa === "ADVERTENCIA") totalAdvertencias++;
+    if (o.tratativa === "SUSPEICAO") totalSuspeicoes++;
   }
 
   const byType = [...typesMap.values()].sort((a, b) => b.count - a.count);
@@ -74,13 +72,11 @@ function computeStats(occurrences: DailyOccurrence[]): DailyStats {
     .slice(0, 5);
 
   return {
-    score,
-    scoreLabel,
-    scoreHex,
     totalOcc: occurrences.length,
     totalDrivers: driversSet.size,
     totalVehicles: vehiclesSet.size,
-    totalEvidences: occurrences.reduce((s, o) => s + (o.evidenceCount ?? 0), 0),
+    totalAdvertencias,
+    totalSuspeicoes,
     byType,
     byBase,
     driverRanking,
@@ -114,16 +110,6 @@ export function buildDailyReportPdfHtml(args: {
     a.startTime.localeCompare(b.startTime) || a.eventDate.localeCompare(b.eventDate),
   );
 
-  const logoHtml = logoDataUri
-    ? `<img class="logo" src="${logoDataUri}" alt="Logo" />`
-    : `<div class="logo-spacer"></div>`;
-
-  const scoreBar = `
-    <div style="display:inline-flex; align-items:center; gap:10px;">
-      <span style="font-size:26pt; font-weight:700; color:${stats.scoreHex};">${stats.score}</span>
-      <span style="font-size:9pt; color:${stats.scoreHex}; font-weight:600;">${esc(stats.scoreLabel)}</span>
-    </div>`;
-
   // ── Seção 1: Resumo ─────────────────────────────────────────────────────────
   const summarySection = `
     <table class="summary-table" cellspacing="0" cellpadding="0">
@@ -140,13 +126,13 @@ export function buildDailyReportPdfHtml(args: {
           <div class="summary-number">${stats.totalDrivers}</div>
           <div class="summary-label">Motoristas</div>
         </td>
-        <td class="summary-cell">
-          <div class="summary-number">${stats.totalEvidences}</div>
-          <div class="summary-label">Evidências</div>
+        <td class="summary-cell adv-cell">
+          <div class="summary-number">${stats.totalAdvertencias}</div>
+          <div class="summary-label">Advertências</div>
         </td>
-        <td class="summary-cell score-cell">
-          <div class="summary-label" style="margin-bottom:4px;">Score do dia</div>
-          ${scoreBar}
+        <td class="summary-cell susp-cell">
+          <div class="summary-number">${stats.totalSuspeicoes}</div>
+          <div class="summary-label">Suspensões</div>
         </td>
       </tr>
     </table>`;
@@ -211,34 +197,42 @@ export function buildDailyReportPdfHtml(args: {
     </div>` : "";
 
   // ── Seção 5: Lista de ocorrências ───────────────────────────────────────────
+  const TRATATIVA_LABEL: Record<string, string> = {
+    SUSPEICAO: "Suspeição",
+    ADVERTENCIA: "Advertência",
+    VALE: "Vale",
+    REGISTRO: "Registro",
+  };
+
   const occRows = sorted.map((o, idx) => {
     const num = String(idx + 1).padStart(2, "0");
     const title = occTitle_(o);
     const d1 = o.drivers.find((d) => d.position === 1);
     const driverStr = d1 ? [d1.registry, d1.name].filter(Boolean).join(" — ") : "—";
-    const startFmt = fmtTime(o.startTime);
-    const endFmt = fmtTime(o.endTime);
-    const timeStr = startFmt === endFmt ? startFmt : `${startFmt} à ${endFmt}`;
     const line = o.lineLabel ?? "—";
-    const place = o.place ?? "—";
-    const speedCell = o.typeCode === "EXCESSO_VELOCIDADE"
-      ? `<td class="occ-td">${o.speedKmh ? `${o.speedKmh} km/h` : "—"}</td>`
-      : `<td class="occ-td">${esc(place)}</td>`;
-    const evBadge = o.evidenceCount > 0
-      ? `<span class="ev-badge">${o.evidenceCount} ev.</span>`
-      : "";
+    const tratativaLabel = o.tratativa ? (TRATATIVA_LABEL[o.tratativa] ?? o.tratativa) : "—";
+    const tratativaCls = o.tratativa ? `tratativa-${o.tratativa.toLowerCase()}` : "";
+    const hasJustificativa = o.tratativa === "REGISTRO" && o.justificativaRegistro?.trim();
+    const rowClass = idx % 2 === 0 ? "row-even" : "row-odd";
     return `
-      <tr class="${idx % 2 === 0 ? "row-even" : "row-odd"}">
-        <td class="occ-num">${num}</td>
-        <td class="occ-td occ-title">${esc(title)} ${evBadge}</td>
-        <td class="occ-td">${esc(fmtDateBr(o.eventDate))}</td>
-        <td class="occ-td">${esc(timeStr)}</td>
-        <td class="occ-td">${esc(o.vehicleNumber)}</td>
-        <td class="occ-td">${esc(line)}</td>
-        ${speedCell}
-        <td class="occ-td">${esc(o.baseCode ?? "—")}</td>
-        <td class="occ-td">${esc(driverStr)}</td>
-      </tr>`;
+      <tr class="${rowClass}">
+        <td class="occ-num occ-td">${num}</td>
+        <td class="occ-td occ-title">${esc(title)}</td>
+        <td class="occ-td col-nowrap" style="font-family:monospace; font-size:7.5pt;">${esc(o.vehicleNumber)}</td>
+        <td class="occ-td" style="font-size:7.5pt; color:#374151;">${esc(line)}</td>
+        <td class="occ-td col-nowrap" style="font-weight:600; color:#374151;">${esc(o.baseCode ?? "—")}</td>
+        <td class="occ-td" style="font-size:7.5pt;">${esc(driverStr)}</td>
+        <td class="occ-td col-center"><span class="tratativa-badge ${tratativaCls}">${esc(tratativaLabel)}</span></td>
+        <td class="occ-td" style="font-size:7.5pt; color:#374151;">${esc(o.analisadoPor ?? "—")}</td>
+      </tr>
+      ${hasJustificativa ? `
+      <tr class="${rowClass}">
+        <td class="occ-td" style="border-top:none;"></td>
+        <td class="occ-td" colspan="7" style="border-top:none; padding-top:0; padding-bottom:5px;">
+          <span style="font-size:7pt; color:#6b7280; font-style:italic;">Justificativa: </span>
+          <span style="font-size:7pt; color:#374151;">${esc(o.justificativaRegistro!)}</span>
+        </td>
+      </tr>` : ""}`;
   }).join("");
 
   const occListSection = sorted.length > 0 ? `
@@ -247,15 +241,14 @@ export function buildDailyReportPdfHtml(args: {
       <table class="occ-table" cellspacing="0" cellpadding="0">
         <thead>
           <tr>
-            <th class="occ-th">#</th>
-            <th class="occ-th">Ocorrência</th>
-            <th class="occ-th">Data</th>
-            <th class="occ-th">Horário</th>
-            <th class="occ-th">Veículo</th>
-            <th class="occ-th">Linha</th>
-            <th class="occ-th">Local / Vel.</th>
-            <th class="occ-th">Base</th>
+            <th class="occ-th" style="width:22px; text-align:center;">#</th>
+            <th class="occ-th" style="width:22%;">Ocorrência</th>
+            <th class="occ-th" style="width:52px;">Veículo</th>
+            <th class="occ-th" style="width:18%;">Linha</th>
+            <th class="occ-th" style="width:70px;">Base</th>
             <th class="occ-th">Motorista</th>
+            <th class="occ-th" style="width:70px;">Tratativa</th>
+            <th class="occ-th" style="width:80px;">Analista</th>
           </tr>
         </thead>
         <tbody>${occRows}</tbody>
@@ -282,31 +275,51 @@ export function buildDailyReportPdfHtml(args: {
     }
 
     /* ── Header ── */
-    .header {
+    .report-header {
+      display: flex;
+      align-items: stretch;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 5px;
+      overflow: hidden;
+      margin-bottom: 16px;
+    }
+    .report-header-logo {
+      background: #fff;
+      padding: 14px 20px;
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      margin-bottom: 14px;
+      justify-content: center;
+      min-width: 150px;
+      border-right: 1.5px solid #e2e8f0;
     }
-    .logo { height: 68px; display: block; }
-    .logo-spacer { width: 160px; height: 68px; }
-    .header-spacer { width: 160px; }
-    .header-title {
+    .report-header-logo img { height: 52px; display: block; }
+    .report-header-logo .logo-placeholder {
+      width: 110px; height: 52px;
+      background: #e2e8f0;
+      border-radius: 3px;
+    }
+    .report-header-body {
       flex: 1;
-      text-align: center;
-      font-family: "Georgia", "Times New Roman", serif;
-      font-size: 17pt;
-      font-weight: 700;
-      letter-spacing: 1.2px;
-      line-height: 1.2;
+      padding: 14px 22px;
+      background: #f47920;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 3px;
     }
-    .header-sub {
-      text-align: center;
-      font-size: 10pt;
-      color: #555;
-      margin-bottom: 12px;
-      margin-top: -8px;
+    .report-header-title {
+      font-family: "Segoe UI", "Inter", Arial, sans-serif;
+      font-size: 15pt;
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      line-height: 1.1;
+    }
+    .report-header-sub {
+      font-size: 9pt;
+      color: rgba(255,255,255,0.88);
+      letter-spacing: 0.1px;
     }
 
     hr.sep { border: none; border-top: 2px solid #f47920; margin: 8px 0 14px; }
@@ -321,7 +334,10 @@ export function buildDailyReportPdfHtml(args: {
       border-radius: 4px;
       background: #fafafa;
     }
-    .score-cell { background: #fff8f3; border-color: #f47920; }
+    .adv-cell  { background: #fffbeb; border-color: #fcd34d; }
+    .susp-cell { background: #f5f3ff; border-color: #c4b5fd; }
+    .adv-cell  .summary-number { color: #d97706; }
+    .susp-cell .summary-number { color: #7c3aed; }
     .summary-number { font-size: 22pt; font-weight: 700; color: #1e293b; line-height: 1; }
     .summary-label { font-size: 8.5pt; color: #6b7280; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
 
@@ -354,23 +370,43 @@ export function buildDailyReportPdfHtml(args: {
     .rank-name { padding: 4px 6px; }
     .rank-base { padding: 4px 6px; color: #6b7280; font-size: 9pt; }
     .rank-count { padding: 4px 6px; font-weight: 700; text-align: right; width: 30px; color: #f47920; }
-    .row-even { background: #fff; }
-    .row-odd { background: #f9fafb; }
+    .row-even td { background: #fff; color: #111; }
+    .row-odd  td { background: #f9fafb; color: #111; }
 
     /* ── Occurrences list ── */
-    .occ-table { width: 100%; border-collapse: collapse; font-size: 8.5pt; }
+    .occ-table { width: 100%; border-collapse: collapse; font-size: 8pt; border: 1px solid #d1d5db; }
     .occ-th {
       background: #f47920;
       color: #fff;
-      font-weight: 600;
-      padding: 5px 5px;
+      font-weight: 700;
+      padding: 6px 7px;
       text-align: left;
-      font-size: 8pt;
+      font-size: 7.5pt;
+      white-space: nowrap;
+      border-right: 1px solid rgba(255,255,255,0.25);
+      letter-spacing: 0.3px;
+    }
+    .occ-th:last-child { border-right: none; }
+    .occ-num {
+      padding: 5px 6px;
+      color: #9ca3af;
+      font-weight: 700;
+      width: 18px;
+      text-align: center;
+      border-right: 1px solid #e5e7eb;
       white-space: nowrap;
     }
-    .occ-num { padding: 4px 5px; color: #9ca3af; font-weight: 600; width: 22px; }
-    .occ-td { padding: 4px 5px; vertical-align: top; }
-    .occ-title { font-weight: 600; }
+    .occ-td {
+      padding: 5px 7px;
+      vertical-align: middle;
+      border-right: 1px solid #e5e7eb;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    .occ-td:last-child { border-right: none; }
+    .occ-title { font-weight: 700; color: #1e293b; }
+    .col-nowrap { white-space: nowrap; }
+    .col-center { text-align: center; }
+    .occ-table tbody tr { break-inside: avoid; page-break-inside: avoid; }
     .ev-badge {
       display: inline-block;
       background: #f47920;
@@ -381,19 +417,34 @@ export function buildDailyReportPdfHtml(args: {
       margin-left: 4px;
       vertical-align: middle;
     }
+    .tratativa-badge {
+      display: inline-block;
+      border-radius: 3px;
+      font-size: 7.5pt;
+      font-weight: 600;
+      padding: 1px 5px;
+      color: #fff;
+      background: #9ca3af;
+    }
+    .tratativa-suspeicao  { background: #6366f1; }
+    .tratativa-advertencia { background: #f59e0b; }
+    .tratativa-vale        { background: #ef4444; }
+    .tratativa-registro    { background: #6b7280; }
   </style>
 </head>
 <body>
 
-  <div class="header">
-    ${logoHtml}
-    <div class="header-title">
-      <div>RELATÓRIO DIÁRIO</div>
-      <div>CONSOLIDADO</div>
+  <div class="report-header">
+    <div class="report-header-logo">
+      ${logoDataUri
+        ? `<img src="${logoDataUri}" alt="Logo" />`
+        : `<div class="logo-placeholder"></div>`}
     </div>
-    <div class="header-spacer"></div>
+    <div class="report-header-body">
+      <div class="report-header-title">Relatório Diário Consolidado</div>
+      <div class="report-header-sub">${dateLabel} &nbsp;·&nbsp; ${stats.totalOcc} ocorrência${stats.totalOcc !== 1 ? "s" : ""} registrada${stats.totalOcc !== 1 ? "s" : ""}</div>
+    </div>
   </div>
-  <div class="header-sub">${dateLabel} &nbsp;·&nbsp; ${stats.totalOcc} ocorrência${stats.totalOcc !== 1 ? "s" : ""} registrada${stats.totalOcc !== 1 ? "s" : ""}</div>
 
   <hr class="sep" />
 

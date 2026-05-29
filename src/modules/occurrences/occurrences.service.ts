@@ -65,6 +65,8 @@ export async function createOccurrence(payload: any) {
     show_section_tripulacao: payload.showSectionTripulacao ?? true,
     show_section_passageiros: payload.showSectionPassageiros ?? true,
     devolutiva_before_evidences: payload.devolutivaBeforeEvidences ?? false,
+    tratativa: payload.tratativa ?? null,
+    analisado_por: payload.analisadoPor ?? null,
   });
 
   // 2) cria vínculos (trigger preenche snapshot)
@@ -241,6 +243,8 @@ export async function updateOccurrence(id: string, payload: any) {
     show_section_tripulacao: payload.showSectionTripulacao ?? true,
     show_section_passageiros: payload.showSectionPassageiros ?? true,
     devolutiva_before_evidences: payload.devolutivaBeforeEvidences ?? false,
+    tratativa: payload.tratativa ?? null,
+    analisado_por: payload.analisadoPor ?? null,
   });
 
   await insertDrivers(id, drivers);

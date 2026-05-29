@@ -1,0 +1,27 @@
+insert into base_responsaveis (sigla, responsavel, visibilidade) values
+  ('BSB',  'RENAN',                          'Brasília'),
+  ('UDI',  'RENAN',                          'Uberlândia'),
+  ('PTU',  'RENAN',                          'Paracatu'),
+  ('BHZ',  'RENAN',                          'Belo Horizonte'),
+  ('SAO',  'DIEGO',                          'São Paulo'),
+  ('URA',  'DIEGO',                          'Uberaba'),
+  ('NAT',  'MANOEL NETO',                    'Natal'),
+  ('APD',  'MANOEL NETO',                    'Apodi'),
+  ('REC',  'FRANCISCO ALEXANDRO DA SILVA',   'Recife'),
+  ('MCZ',  'FRANCISCO ALEXANDRO DA SILVA',   'Maceió'),
+  ('SSA',  'FRANCISCO ALEXANDRO DA SILVA',   'Salvador'),
+  ('FST',  'FRANCISCO ALEXANDRO DA SILVA',   'Feira de Santana'),
+  ('AJU',  'FRANCISCO ALEXANDRO DA SILVA',   'Aracaju'),
+  ('VQT',  'FRANCISCO ALEXANDRO DA SILVA',   'Vitória da Conquista'),
+  ('FOR',  'FRANCISCO ALEXANDRO DA SILVA',   'Fortaleza'),
+  ('GYN',  'EMERSON LUIZ',                   'Goiânia'),
+  ('PGT',  'EMERSON LUIZ',                   'Porangatu'),
+  ('PMA',  'EMERSON LUIZ',                   'Palmas'),
+  ('PNZ',  'MARIO JUNIOR',                   'Petrolina'),
+  ('JDO',  'MARIO JUNIOR',                   'Juazeiro do Norte'),
+  ('THE',  '',                               'Teresina'),
+  ('MOCC', 'WILSON',                         'Montes Claros'),
+  ('BES',  'LUIZ ANTONIO',                   'Barreiras')
+on conflict (sigla) do update
+  set responsavel  = excluded.responsavel,
+      visibilidade = excluded.visibilidade;

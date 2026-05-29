@@ -57,6 +57,9 @@ export const createOccurrenceSchema = z.object({
     .min(0)
     .max(2),
 
+  tratativa: z.enum(["SUSPEICAO", "ADVERTENCIA", "VALE", "REGISTRO"]).optional().nullable(),
+  analisadoPor: z.string().trim().optional().nullable(),
+
   // Campos gerados pela análise operacional (ANALISE_OP)
   paradasProibidas: z
     .array(z.object({ localNome: z.string(), localCodigo: z.string().nullable().optional() }))

@@ -9,6 +9,8 @@ import { aiRoutes } from "../../modules/ai/ai.routes.js";
 import { tripsRoutes } from "../../modules/trips/trips.routes.js";
 import { automationRoutes } from "../../modules/automation/automation.routes.js";
 import { presetsRoutes } from "../../modules/presets/presets.routes.js";
+import { routeSchemesRoutes } from "../../modules/route-schemes/route-schemes.routes.js";
+import { telemetryRoutes } from "../../modules/telemetry/telemetry.routes.js";
 
 export function registerRoutes(app: Express) {
   occurrencesRoutes(app);
@@ -20,4 +22,6 @@ export function registerRoutes(app: Express) {
   aiRoutes(app);
   automationRoutes(app);
   presetsRoutes(app);
+  routeSchemesRoutes(app);
+  telemetryRoutes(app);
 }

@@ -112,6 +112,9 @@ export async function listOccurrencesByDay(date: string) {
       advertencia,
       suspensao,
       falta_tratativa,
+      tratativa,
+      analisado_por,
+      justificativa_registro,
       created_at,
       occurrence_types:occurrence_types (code, title),
       occurrence_drivers (position, driver_id, registry, name, base_code),
@@ -175,6 +178,9 @@ export async function listOccurrencesByDay(date: string) {
     advertencia: o.advertencia ?? true,
     suspensaoDisciplinar: o.suspensao ?? false,
     faltaTratativa: o.falta_tratativa ?? false,
+    tratativa: o.tratativa ?? null,
+    analisadoPor: o.analisado_por ?? null,
+    justificativaRegistro: o.justificativa_registro ?? null,
   }));
 }
 
@@ -249,6 +255,8 @@ export async function getOccurrenceById(id: string) {
       advertencia,
       suspensao,
       falta_tratativa,
+      tratativa,
+      analisado_por,
       occurrence_types:occurrence_types (code, title),
       occurrence_drivers (position, driver_id, registry, name, base_code),
       occurrence_evidences (id, storage_path, caption, link_texto, link_url, sort_order),
@@ -319,6 +327,8 @@ export async function getOccurrenceById(id: string) {
     advertencia: o.advertencia ?? true,
     suspensaoDisciplinar: o.suspensao ?? false,
     faltaTratativa: o.falta_tratativa ?? false,
+    tratativa: o.tratativa ?? null,
+    analisadoPor: o.analisado_por ?? null,
     suspensao: (() => {
       const arr = Array.isArray(o.suspensoes) ? o.suspensoes : []
       const s = arr[0] ?? null
@@ -443,6 +453,8 @@ export async function updateOccurrenceData(id: string, data: any) {
       show_section_tripulacao: data.show_section_tripulacao ?? true,
       show_section_passageiros: data.show_section_passageiros ?? true,
       devolutiva_before_evidences: data.devolutiva_before_evidences ?? false,
+      tratativa: data.tratativa ?? null,
+      analisado_por: data.analisado_por ?? null,
       pdf_url: null,
       pdf_expires_at: null,
     })
@@ -488,6 +500,23 @@ export async function deleteOccurrence(id: string) {
     .delete()
     .eq("id", id);
 
+  if (error) throw error;
+}
+
+export async function updateTratativa(
+  id: string,
+  tratativa: string | null,
+  analisadoPor: string | null,
+  justificativaRegistro?: string | null,
+): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from("occurrences")
+    .update({
+      tratativa: tratativa ?? null,
+      analisado_por: analisadoPor ?? null,
+      justificativa_registro: justificativaRegistro ?? null,
+    })
+    .eq("id", id);
   if (error) throw error;
 }
 

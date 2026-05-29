@@ -11,6 +11,7 @@ import {
   deleteOccurrence,
   getOccurrenceById,
   listReportTitles,
+  updateTratativa,
 } from "./occurrences.repo.js";
 
 export function occurrencesRoutes(app: Express) {
@@ -68,6 +69,26 @@ export function occurrencesRoutes(app: Express) {
       const payload = createOccurrenceSchema.parse(req.body);
       await updateOccurrence(id, payload);
       res.json({ success: true });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // PATCH tratativa/analista (atualização parcial)
+  app.patch("/occurrences/:id/tratativa", async (req, res, next) => {
+    try {
+      const { id } = req.params;
+      const { tratativa, analisadoPor, justificativaRegistro } = req.body as {
+        tratativa?: string | null;
+        analisadoPor?: string | null;
+        justificativaRegistro?: string | null;
+      };
+      const VALID = ["SUSPEICAO", "ADVERTENCIA", "VALE", "REGISTRO", null, undefined];
+      if (!VALID.includes(tratativa as any)) {
+        return res.status(400).json({ error: "tratativa inválida" });
+      }
+      await updateTratativa(id, tratativa ?? null, analisadoPor ?? null, justificativaRegistro ?? null);
+      res.json({ ok: true });
     } catch (err) {
       next(err);
     }
