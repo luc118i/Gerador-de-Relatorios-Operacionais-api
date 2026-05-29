@@ -487,23 +487,43 @@ export async function getDriverSnapshotByOccurrence(
 export async function getLocalIdByNome(nome: string) {
   const normalizado = nome.trim();
 
-  // Tenta primeiro exact match
+  // 1) Exact match
   const { data: exact } = await supabaseAdmin
     .from("locais")
     .select("id")
     .eq("nome", normalizado)
     .maybeSingle();
-
   if (exact?.id) return exact.id as number;
 
-  // Fallback: case-insensitive para cobrir diferenças de capitalização
-  const { data: ilike } = await supabaseAdmin
+  // 2) Case-insensitive
+  const { data: ci } = await supabaseAdmin
     .from("locais")
     .select("id")
     .ilike("nome", normalizado)
     .maybeSingle();
+  if (ci?.id) return ci.id as number;
 
-  return (ilike?.id as number) ?? null;
+  // 3) Fuzzy: remove pontuação e busca por LIKE em ambos os lados
+  const stripped = normalizado.replace(/[.,\-/\\]/g, " ").replace(/\s+/g, " ").trim();
+  const { data: fuzzy, error: fuzzyErr } = await supabaseAdmin
+    .from("locais")
+    .select("id, nome")
+    .ilike("nome", `%${stripped.slice(0, 20)}%`)
+    .limit(5);
+
+  if (!fuzzyErr && fuzzy?.length) {
+    // Pega o candidato com nome mais parecido (maior sobreposição de palavras)
+    const words = new Set(stripped.toLowerCase().split(" ").filter(Boolean));
+    const scored = fuzzy.map((r: any) => {
+      const rw = (r.nome as string).toLowerCase().replace(/[.,\-/\\]/g, " ").split(" ").filter(Boolean);
+      const hits = rw.filter((w: string) => words.has(w)).length;
+      return { id: r.id, hits };
+    });
+    scored.sort((a: any, b: any) => b.hits - a.hits);
+    if (scored[0]?.hits >= 2) return scored[0].id as number;
+  }
+
+  return null;
 }
 export async function deleteOccurrence(id: string) {
   const { error } = await supabaseAdmin
