@@ -503,20 +503,22 @@ export async function getLocalIdByNome(nome: string) {
     .maybeSingle();
   if (ci?.id) return ci.id as number;
 
-  // 3) Fuzzy: remove pontuação e busca por LIKE em ambos os lados
-  const stripped = normalizado.replace(/[.,\-/\\]/g, " ").replace(/\s+/g, " ").trim();
+  // 3) Fuzzy: busca pelo primeiro token significativo (sem strip no ilike — o banco tem pontuação),
+  //    depois pontua candidatos por sobreposição de palavras (strip em ambos os lados)
+  const tokens = normalizado.toLowerCase().split(/[\s.,\-\/\\]+/).filter((w) => w.length > 2);
+  if (tokens.length === 0) return null;
+
   const { data: fuzzy, error: fuzzyErr } = await supabaseAdmin
     .from("locais")
     .select("id, nome")
-    .ilike("nome", `%${stripped.slice(0, 20)}%`)
-    .limit(5);
+    .ilike("nome", `%${tokens[0]}%`)
+    .limit(10);
 
   if (!fuzzyErr && fuzzy?.length) {
-    // Pega o candidato com nome mais parecido (maior sobreposição de palavras)
-    const words = new Set(stripped.toLowerCase().split(" ").filter(Boolean));
+    const inputWords = new Set(tokens);
     const scored = fuzzy.map((r: any) => {
-      const rw = (r.nome as string).toLowerCase().replace(/[.,\-/\\]/g, " ").split(" ").filter(Boolean);
-      const hits = rw.filter((w: string) => words.has(w)).length;
+      const rWords = (r.nome as string).toLowerCase().split(/[\s.,\-\/\\]+/).filter((w: string) => w.length > 0);
+      const hits = rWords.filter((w: string) => inputWords.has(w)).length;
       return { id: r.id, hits };
     });
     scored.sort((a: any, b: any) => b.hits - a.hits);
