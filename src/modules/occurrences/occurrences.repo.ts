@@ -522,7 +522,8 @@ export async function getLocalIdByNome(nome: string) {
       return { id: r.id, hits };
     });
     scored.sort((a: any, b: any) => b.hits - a.hits);
-    if (scored[0]?.hits >= 2) return scored[0].id as number;
+    const best = scored[0];
+    if (best && best.hits >= 2) return best.id as number;
   }
 
   return null;
