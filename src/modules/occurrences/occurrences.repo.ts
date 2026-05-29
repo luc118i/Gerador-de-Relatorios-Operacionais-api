@@ -485,14 +485,25 @@ export async function getDriverSnapshotByOccurrence(
 }
 
 export async function getLocalIdByNome(nome: string) {
-  const { data, error } = await supabaseAdmin
+  const normalizado = nome.trim();
+
+  // Tenta primeiro exact match
+  const { data: exact } = await supabaseAdmin
     .from("locais")
     .select("id")
-    .eq("nome", nome)
-    .single();
+    .eq("nome", normalizado)
+    .maybeSingle();
 
-  if (error) return null; // não quebra se não achar
-  return (data?.id as number) ?? null;
+  if (exact?.id) return exact.id as number;
+
+  // Fallback: case-insensitive para cobrir diferenças de capitalização
+  const { data: ilike } = await supabaseAdmin
+    .from("locais")
+    .select("id")
+    .ilike("nome", normalizado)
+    .maybeSingle();
+
+  return (ilike?.id as number) ?? null;
 }
 export async function deleteOccurrence(id: string) {
   const { error } = await supabaseAdmin
