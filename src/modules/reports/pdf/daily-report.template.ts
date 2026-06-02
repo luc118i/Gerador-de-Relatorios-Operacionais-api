@@ -27,6 +27,7 @@ type DailyStats = {
   totalSuspeicoes: number;
   byType: Array<{ name: string; count: number }>;
   byBase: Array<{ base: string; count: number }>;
+  byAnalyst: Array<{ name: string; count: number }>;
   driverRanking: Array<{ name: string; count: number; base: string }>;
 };
 
@@ -36,6 +37,7 @@ function computeStats(occurrences: DailyOccurrence[]): DailyStats {
   const basesMap = new Map<string, number>();
   const typesMap = new Map<string, { name: string; count: number }>();
   const driverCountMap = new Map<string, { name: string; count: number; base: string }>();
+  const analystMap = new Map<string, number>();
   let totalAdvertencias = 0;
   let totalSuspeicoes = 0;
 
@@ -59,11 +61,17 @@ function computeStats(occurrences: DailyOccurrence[]): DailyStats {
       driverCountMap.set(key, { ...prev2, count: prev2.count + 1 });
     }
 
+    const analyst = (o.analisadoPor ?? "").trim();
+    if (analyst) analystMap.set(analyst, (analystMap.get(analyst) ?? 0) + 1);
+
     if (o.tratativa === "ADVERTENCIA") totalAdvertencias++;
     if (o.tratativa === "SUSPEICAO") totalSuspeicoes++;
   }
 
   const byType = [...typesMap.values()].sort((a, b) => b.count - a.count);
+  const byAnalyst = [...analystMap.entries()]
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count);
   const byBase = [...basesMap.entries()]
     .map(([base, count]) => ({ base, count }))
     .sort((a, b) => b.count - a.count);
@@ -79,6 +87,7 @@ function computeStats(occurrences: DailyOccurrence[]): DailyStats {
     totalSuspeicoes,
     byType,
     byBase,
+    byAnalyst,
     driverRanking,
   };
 }
@@ -111,6 +120,12 @@ export function buildDailyReportPdfHtml(args: {
   );
 
   // ── Seção 1: Resumo ─────────────────────────────────────────────────────────
+  const analystCells = stats.byAnalyst.map((a) => `
+        <td class="summary-cell analyst-cell">
+          <div class="summary-number">${a.count}</div>
+          <div class="summary-label">${esc(a.name)}</div>
+        </td>`).join("");
+
   const summarySection = `
     <table class="summary-table" cellspacing="0" cellpadding="0">
       <tr>
@@ -133,7 +148,7 @@ export function buildDailyReportPdfHtml(args: {
         <td class="summary-cell susp-cell">
           <div class="summary-number">${stats.totalSuspeicoes}</div>
           <div class="summary-label">Suspensões</div>
-        </td>
+        </td>${analystCells}
       </tr>
     </table>`;
 
@@ -336,8 +351,10 @@ export function buildDailyReportPdfHtml(args: {
     }
     .adv-cell  { background: #fffbeb; border-color: #fcd34d; }
     .susp-cell { background: #f5f3ff; border-color: #c4b5fd; }
+    .analyst-cell { background: #ecfeff; border-color: #67e8f9; }
     .adv-cell  .summary-number { color: #d97706; }
     .susp-cell .summary-number { color: #7c3aed; }
+    .analyst-cell .summary-number { color: #0891b2; }
     .summary-number { font-size: 22pt; font-weight: 700; color: #1e293b; line-height: 1; }
     .summary-label { font-size: 8.5pt; color: #6b7280; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
 
