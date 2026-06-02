@@ -40,6 +40,7 @@ Thumbs.db
 # ==============================
 .vscode/
 .idea/
+.claude/
 *.swp
 *.swo
 
@@ -71,3 +72,4 @@ screenshots/
 # ==============================
 *.sqlite
 *.db
+test-sample.csv
