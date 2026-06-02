@@ -13,6 +13,7 @@ import {
   updateDriver,
   deleteDriver,
   upsertDriver,
+  getDriverStats,
 } from "./drivers.service.js";
 
 export function driversRoutes(app: Express) {
@@ -68,6 +69,17 @@ export function driversRoutes(app: Express) {
         base: payloadRaw.base ?? null,
       });
       res.status(200).json(driver);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // Recorrência do motorista no mês corrente (advertência / vale / suspensão).
+  app.get("/drivers/:id/stats", async (req, res, next) => {
+    try {
+      const { id } = req.params;
+      const stats = await getDriverStats(id);
+      return res.json({ data: stats });
     } catch (err) {
       next(err);
     }

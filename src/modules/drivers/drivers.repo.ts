@@ -114,3 +114,38 @@ export async function deleteDriverRepo(id: string) {
 
   return !!data;
 }
+
+// Conta as tratativas do motorista a partir de monthStartISO (mês corrente).
+export async function getDriverTratativaCounts(driverId: string, monthStartISO: string) {
+  const { data, error } = await supabaseAdmin
+    .from("occurrence_drivers")
+    .select("occurrences!inner(tratativa, created_at)")
+    .eq("driver_id", driverId)
+    .gte("occurrences.created_at", monthStartISO);
+
+  if (error) throw error;
+
+  let advertencia = 0;
+  let vale = 0;
+  let suspensao = 0;
+  let total = 0;
+
+  for (const row of (data ?? []) as any[]) {
+    const occ = Array.isArray(row.occurrences) ? row.occurrences[0] : row.occurrences;
+    if (!occ) continue;
+    total++;
+    switch (occ.tratativa) {
+      case "ADVERTENCIA":
+        advertencia++;
+        break;
+      case "VALE":
+        vale++;
+        break;
+      case "SUSPEICAO":
+        suspensao++;
+        break;
+    }
+  }
+
+  return { advertencia, vale, suspensao, total };
+}

@@ -5,7 +5,13 @@ import {
   updateDriverRepo,
   deleteDriverRepo,
   upsertDriverRepo,
+  getDriverTratativaCounts,
 } from "./drivers.repo.js";
+
+const MESES = [
+  "janeiro", "fevereiro", "março", "abril", "maio", "junho",
+  "julho", "agosto", "setembro", "outubro", "novembro", "dezembro",
+];
 
 export async function lookupDriver(code: string) {
   const row = await lookupDriverByCode(code);
@@ -87,6 +93,27 @@ export async function updateDriver(
 export async function deleteDriver(id: string) {
   const deleted = await deleteDriverRepo(id);
   return deleted;
+}
+
+export async function getDriverStats(driverId: string) {
+  const now = new Date();
+  const monthStart = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    1,
+    0, 0, 0, 0,
+  ).toISOString();
+
+  const counts = await getDriverTratativaCounts(driverId, monthStart);
+
+  return {
+    driverId,
+    advertencia: counts.advertencia,
+    vale: counts.vale,
+    suspensao: counts.suspensao,
+    total: counts.total,
+    periodLabel: `${MESES[now.getMonth()]}/${now.getFullYear()}`,
+  };
 }
 
 export async function upsertDriver(payload: {
