@@ -213,7 +213,7 @@ export function buildDailyReportPdfHtml(args: {
 
   // ── Seção 5: Lista de ocorrências ───────────────────────────────────────────
   const TRATATIVA_LABEL: Record<string, string> = {
-    SUSPEICAO: "Suspeição",
+    SUSPEICAO: "Suspensão",
     ADVERTENCIA: "Advertência",
     VALE: "Vale",
     REGISTRO: "Registro",
