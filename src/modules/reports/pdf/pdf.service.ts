@@ -122,6 +122,7 @@ export async function buildOccurrencePdf(args: {
     html = buildAnaliseOpPdfHtml({
       occurrence,
       drivers,
+      evidences: embedded,
       logoDataUri: getLogoDataUri(),
     });
   } else {

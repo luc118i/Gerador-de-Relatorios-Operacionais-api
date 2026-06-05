@@ -367,11 +367,12 @@ function fmtTimeBr(t: string) {
 export function buildAnaliseOpPdfHtml(args: {
   occurrence: import("./pdf.types.js").PdfOccurrence;
   drivers?: import("./pdf.types.js").PdfDriver[];
+  evidences?: Array<{ dataUri: string; caption?: string | null; linkTexto?: string; linkUrl?: string }>;
   logoDataUri?: string | null;
   footerCompany?: string | null;
   footerCnpj?: string | null;
 }) {
-  const { occurrence, drivers = [], logoDataUri } = args;
+  const { occurrence, drivers = [], evidences = [], logoDataUri } = args;
 
   const company = args.footerCompany ?? "KANDANGO TRANSPORTE E TURISMO LTDA";
   const cnpj    = args.footerCnpj    ?? "03.233.439/0001-52";
@@ -391,6 +392,34 @@ export function buildAnaliseOpPdfHtml(args: {
   const logoHtml = logoDataUri
     ? `<img class="logo" src="${logoDataUri}" alt="Logo" />`
     : `<div class="logo-spacer"></div>`;
+
+  // ── Evidências (imagens anexadas) ───────────────────────────────────────────
+  const evidenceHtml = evidences
+    .map((e) => {
+      const cap = (e.caption ?? "").trim();
+      const linkTexto = (e.linkTexto ?? "").trim();
+      let linkUrl = (e.linkUrl ?? "").trim();
+      if (linkUrl && !/^https?:\/\//i.test(linkUrl)) linkUrl = "https://" + linkUrl;
+      const captionParts: string[] = [];
+      if (cap) captionParts.push(escapeHtml(cap));
+      if (linkUrl) {
+        captionParts.push(
+          `<a href="${escapeHtml(linkUrl)}" target="_blank">${escapeHtml(linkTexto || "Acessar evid&#234;ncia")}</a>`,
+        );
+      }
+      const finalCaption =
+        captionParts.length > 0 ? `<figcaption>${captionParts.join("<br/>")}</figcaption>` : "";
+      return `<figure class="ev"><img src="${e.dataUri}" alt="Evid&#234;ncia" />${finalCaption}</figure>`;
+    })
+    .join("");
+
+  const evidenceSection =
+    evidences.length > 0
+      ? `<div class="section">
+    <div class="section-hd">REGISTRO FOTOGR&#193;FICO</div>
+    <div class="ev-section">${evidenceHtml}</div>
+  </div>`
+      : "";
 
   // ── Construtores de linhas de tabela (mesmo padrão do GENERICO) ─────────────
   const rowFull = (label: string, val: string): string =>
@@ -540,6 +569,29 @@ export function buildAnaliseOpPdfHtml(args: {
     .text-area p   { margin: 0 0 8px; }
     .text-area strong { font-weight: 700; }
 
+    /* ── Evidências (registro fotográfico) ── */
+    .ev-section { padding: 12px 14px; background: #fff; }
+    figure.ev {
+      margin: 0 0 12px 0;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    figure.ev img {
+      width: 100%;
+      height: auto;
+      max-height: 60vh;
+      object-fit: contain;
+      display: block;
+      border: 1px solid #ddd;
+    }
+    figure.ev figcaption {
+      margin-top: 4px;
+      font-size: 9pt;
+      color: #555;
+      line-height: 1.3;
+    }
+    figure.ev a { color: #555; text-decoration: underline; }
+
     /* ── Rodapé (idêntico ao GENERICO) ── */
     .doc-footer {
       margin-top: 18px;
@@ -578,6 +630,8 @@ export function buildAnaliseOpPdfHtml(args: {
     <div class="text-area">${relatoHtml}</div>
   </div>
 
+  <!-- ══ EVIDÊNCIAS ══ -->
+  ${evidenceSection}
 
 </body>
 </html>`;
