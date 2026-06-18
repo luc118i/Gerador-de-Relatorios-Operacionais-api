@@ -4,6 +4,8 @@ import { sendOccurrenceToDriveHandler } from "./pdf.drive.route.js";
 import { getSuspensaoPdfHandler, getSuspensaoInfoHandler } from "./suspensao.route.js";
 import { getDailyReportPdfHandler, sendDailyReportToDriveHandler } from "./daily-report.route.js";
 import { getTelemetryReportPdfHandler } from "./telemetry-report.route.js";
+import { getExcessoParadaReportPdfHandler } from "./excesso-parada.route.js";
+import { getExcessoParadaManualPdfHandler } from "./excesso-parada-manual.route.js";
 
 export function reportsPdfRoutes(app: Express) {
   app.get("/reports/occurrences/:id/pdf", getOccurrencePdfHandler);
@@ -13,4 +15,6 @@ export function reportsPdfRoutes(app: Express) {
   app.get("/reports/daily/:date/pdf", getDailyReportPdfHandler);
   app.post("/reports/daily/:date/drive", sendDailyReportToDriveHandler);
   app.get("/reports/telemetry/:id/pdf", getTelemetryReportPdfHandler);
+  app.get("/reports/telemetry/:id/excesso-parada-pdf", getExcessoParadaReportPdfHandler);
+  app.post("/reports/excesso-parada", getExcessoParadaManualPdfHandler);
 }

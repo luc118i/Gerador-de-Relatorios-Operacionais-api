@@ -11,6 +11,7 @@ import { automationRoutes } from "../../modules/automation/automation.routes.js"
 import { presetsRoutes } from "../../modules/presets/presets.routes.js";
 import { routeSchemesRoutes } from "../../modules/route-schemes/route-schemes.routes.js";
 import { telemetryRoutes } from "../../modules/telemetry/telemetry.routes.js";
+import { tempoPermanenciaRoutes } from "../../modules/tempo-permanencia/tempo-permanencia.routes.js";
 
 export function registerRoutes(app: Express) {
   occurrencesRoutes(app);
@@ -24,4 +25,5 @@ export function registerRoutes(app: Express) {
   presetsRoutes(app);
   routeSchemesRoutes(app);
   telemetryRoutes(app);
+  tempoPermanenciaRoutes(app);
 }
