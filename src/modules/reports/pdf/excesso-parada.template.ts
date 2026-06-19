@@ -340,9 +340,9 @@ export function buildExcessoParadaReportHtml(args: {
     .c-ponto { font-weight: 600; }
     .c-dt { color: #444; white-space: nowrap; }
     .c-cls { color: #555; }
-    .c-exc { font-weight: 700; }
-    .exc-crit { color: #b91c1c; }
-    .exc-warn { color: #b45309; }
+    .c-exc { font-weight: 700; color: #c0121c; font-size: 11pt; }
+    .exc-crit { color: #c0121c; }
+    .exc-warn { color: #c0121c; }
     table.exc tfoot td { background: #f3f4f6; font-weight: 700; }
     .c-foot { text-align: right; }
 
