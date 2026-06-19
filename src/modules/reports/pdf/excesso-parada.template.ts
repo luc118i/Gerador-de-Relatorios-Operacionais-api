@@ -169,7 +169,7 @@ function buildRelatoHtml(prefixo: string, tripDateLabel: string, totalExcessoS: 
       : `tempo de excesso de ${formatDuration(totalExcessoS)}`;
 
   return `
-    <p>Durante a análise das atividades do veículo de número <strong>${esc(prefixo)}</strong> na viagem do dia <strong>${esc(tripDateLabel)}</strong>, identificamos o descumprimento operacional por parte do condutor, em razão da permanência superior ao tempo previsto em ponto de parada (<strong>${esc(excessoLabel)}</strong>).</p>
+    <p>Durante a análise das atividades do veículo de número <strong>${esc(prefixo)}</strong> na viagem do dia <strong>${esc(tripDateLabel)}</strong>, identificamos o descumprimento operacional por parte do condutor, em razão da permanência superior ao tempo previsto em ponto de parada <strong style="color: #c0121c;">(${esc(excessoLabel)})</strong>.</p>
     <p>Esta conduta caracteriza uma violação dos procedimentos operacionais estabelecidos, impactando diretamente a programação da viagem, gerando atrasos e comprometendo a qualidade do serviço prestado aos passageiros.</p>
     <p>Além disso, a ocorrência ocasiona desconformidade em relação aos horários divulgados no ato da comercialização das passagens, afetando a confiabilidade das informações fornecidas aos clientes.</p>
   `;
@@ -258,12 +258,6 @@ export function buildExcessoParadaReportHtml(args: {
         <tbody>
           ${linhas}
         </tbody>
-        <tfoot>
-          <tr>
-            <td colspan="6" class="c-foot">Excesso total</td>
-            <td class="c-num c-exc exc-crit">${esc(formatDuration(totalExcessoS))}</td>
-          </tr>
-        </tfoot>
       </table>
     </div>`;
 
@@ -343,8 +337,6 @@ export function buildExcessoParadaReportHtml(args: {
     .c-exc { font-weight: 700; color: #c0121c; font-size: 11pt; }
     .exc-crit { color: #c0121c; }
     .exc-warn { color: #c0121c; }
-    table.exc tfoot td { background: #f3f4f6; font-weight: 700; }
-    .c-foot { text-align: right; }
 
     /* Registro fotográfico */
     .ev-section { padding: 12px 14px; background: #fff; }
