@@ -14,8 +14,10 @@ import {
   pdfExists,
 } from "./pdf.storage.js";
 import { buildOccurrencePdfHtml, buildGenericOccurrencePdfHtml, buildAnaliseOpPdfHtml } from "./pdf.template.js";
+import { extractExcessos, buildExcessoParadaReportHtml, type ExcessoEvidence } from "./excesso-parada.template.js";
+import { getTempoPermanenciaMap } from "../../telemetry/repositories/tempo-permanencia.repo.js";
 import { renderPdfFromHtml } from "./pdf.puppeteer.js";
-import type { BuildPdfResult, PdfEvidence } from "./pdf.types.js";
+import type { BuildPdfResult, PdfEvidence, PdfOccurrence, PdfDriver } from "./pdf.types.js";
 
 const EVIDENCES_BUCKET = process.env.SUPABASE_BUCKET ?? "occurrence-evidences";
 const REPORTS_BUCKET = process.env.SUPABASE_REPORTS_BUCKET ?? "reports";
@@ -125,6 +127,8 @@ export async function buildOccurrencePdf(args: {
       evidences: embedded,
       logoDataUri: getLogoDataUri(),
     });
+  } else if (occurrence.typeCode === "EXCESSO_PERMANENCIA") {
+    html = await buildExcessoPermanenciaHtml(occurrence, drivers, embedded);
   } else {
     const isParadaFora = occurrence.typeCode === "DESCUMP_OP_PARADA_FORA";
     // For DESCUMP_OP_PARADA_FORA: standard text before evidences, schema after
@@ -163,6 +167,68 @@ function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n));
 }
 
+/**
+ * Monta o PDF de Excesso de Permanência a partir de uma ocorrência persistida.
+ * O excesso é calculado na hora: parada = endTime - startTime (trata virada de
+ * meia-noite) e o tempo permitido vem de TEMPO_PERMANENCIA por local (com
+ * fallback ao limite padrão para locais sem cadastro).
+ */
+async function buildExcessoPermanenciaHtml(
+  occurrence: PdfOccurrence,
+  drivers: PdfDriver[],
+  evidences: ExcessoEvidence[],
+): Promise<string> {
+  const tempoMap = await getTempoPermanenciaMap();
+
+  const eventDate = occurrence.eventDate;
+  const startTime = (occurrence.startTime ?? "").slice(0, 5);
+  const endTime = (occurrence.endTime ?? "").slice(0, 5);
+
+  const [hi, mi] = startTime.split(":").map(Number) as [number, number];
+  const [hf, mf] = endTime.split(":").map(Number) as [number, number];
+
+  // Parada que cruza a meia-noite: saída no dia seguinte
+  let saidaDate = eventDate;
+  if (hf * 60 + mf <= hi * 60 + mi) {
+    const next = new Date(`${eventDate}T00:00:00`);
+    next.setDate(next.getDate() + 1);
+    const yyyy = next.getFullYear();
+    const mm = String(next.getMonth() + 1).padStart(2, "0");
+    const dd = String(next.getDate()).padStart(2, "0");
+    saidaDate = `${yyyy}-${mm}-${dd}`;
+  }
+
+  let paradaS = (hf * 60 + mf - (hi * 60 + mi)) * 60;
+  if (paradaS <= 0) paradaS += 24 * 3600;
+
+  const excessos = extractExcessos(
+    [
+      {
+        seq: 1,
+        ponto: occurrence.place ?? "",
+        entrada: `${eventDate} ${startTime}:00`,
+        saida: `${saidaDate} ${endTime}:00`,
+        parada_s: paradaS,
+      },
+    ],
+    tempoMap,
+  );
+
+  const motorista = drivers
+    .map((d) => [d.code, d.name || "—", d.baseCode].filter(Boolean).join(" - "))
+    .join(" / ");
+
+  return buildExcessoParadaReportHtml({
+    prefixo: occurrence.vehicleNumber ?? "—",
+    dataViagem: occurrence.tripDate ?? "",
+    dataEvento: occurrence.eventDate ?? "",
+    motorista: motorista || null,
+    excessos,
+    evidences,
+    logoDataUri: getLogoDataUri(),
+  });
+}
+
 function fmtDateBr(iso: string) {
   const [y, m, d] = (iso ?? "").split("-");
   if (!y || !m || !d) return iso;
@@ -174,8 +240,6 @@ function fmtTimeBr(hhmm: string) {
   if (!h || !m) return hhmm;
   return `${h}h${m}`;
 }
-
-import type { PdfOccurrence } from "./pdf.types.js";
 
 function esc(s: string) {
   return (s ?? "")

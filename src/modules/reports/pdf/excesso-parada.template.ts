@@ -127,15 +127,25 @@ function buildRelatoHtml(prefixo: string, tripDateLabel: string, totalExcessoS: 
   `;
 }
 
+/** Uma imagem (evidência) já embutida como data URI, para o "Registro Fotográfico". */
+export interface ExcessoEvidence {
+  dataUri: string;
+  caption?: string | null;
+  linkTexto?: string | null;
+  linkUrl?: string | null;
+}
+
 export function buildExcessoParadaReportHtml(args: {
   prefixo: string;
   dataViagem: string;          // YYYY-MM-DD
   motorista?: string | null;
   dataEvento?: string | null;  // YYYY-MM-DD
   excessos: ExcessoParada[];
+  evidences?: ExcessoEvidence[];
   logoDataUri?: string | null;
 }): string {
   const { excessos, logoDataUri } = args;
+  const evidences = args.evidences ?? [];
 
   const prefixo = (args.prefixo ?? "").trim() || "—";
   const motorista = (args.motorista ?? "").trim();
@@ -213,6 +223,35 @@ export function buildExcessoParadaReportHtml(args: {
       </div>
     </div>`;
 
+  // ── Registro fotográfico (evidências) ───────────────────────────────────────
+  const evidenceHtml = evidences
+    .map((e) => {
+      const cap = (e.caption ?? "").trim();
+      const linkTexto = (e.linkTexto ?? "").trim();
+      let linkUrl = (e.linkUrl ?? "").trim();
+      if (linkUrl && !/^https?:\/\//i.test(linkUrl)) linkUrl = "https://" + linkUrl;
+      const captionParts: string[] = [];
+      if (cap) captionParts.push(esc(cap));
+      if (linkUrl) {
+        captionParts.push(
+          `<a href="${esc(linkUrl)}" target="_blank">${esc(linkTexto || "Acessar evidência")}</a>`,
+        );
+      }
+      const finalCaption =
+        captionParts.length > 0 ? `<figcaption>${captionParts.join("<br/>")}</figcaption>` : "";
+      return `<figure class="ev"><img src="${e.dataUri}" alt="Evid&#234;ncia" />${finalCaption}</figure>`;
+    })
+    .join("");
+
+  const evidenceSection =
+    evidences.length === 0
+      ? ""
+      : `
+    <div class="section">
+      <div class="section-hd">REGISTRO FOTOGR&#193;FICO</div>
+      <div class="ev-section">${evidenceHtml}</div>
+    </div>`;
+
   return `<!doctype html>
 <html>
 <head>
@@ -263,6 +302,13 @@ export function buildExcessoParadaReportHtml(args: {
     table.exc tfoot td { background: #f3f4f6; font-weight: 700; }
     .c-foot { text-align: right; }
     .legenda { padding: 8px 10px; font-size: 8.5pt; color: #666; line-height: 1.35; background: #fff; }
+
+    /* Registro fotográfico */
+    .ev-section { padding: 12px 14px; background: #fff; }
+    figure.ev { margin: 0 0 12px 0; break-inside: avoid; page-break-inside: avoid; }
+    figure.ev img { width: 100%; height: auto; max-height: 60vh; object-fit: contain; display: block; border: 1px solid #ddd; }
+    figure.ev figcaption { margin-top: 4px; font-size: 9pt; color: #555; line-height: 1.3; }
+    figure.ev a { color: #555; text-decoration: underline; }
   </style>
 </head>
 <body>
@@ -291,6 +337,9 @@ export function buildExcessoParadaReportHtml(args: {
 
   <!-- PARADAS EM EXCESSO -->
   ${tabelaHtml}
+
+  <!-- REGISTRO FOTOGRÁFICO -->
+  ${evidenceSection}
 
 </body>
 </html>`;
