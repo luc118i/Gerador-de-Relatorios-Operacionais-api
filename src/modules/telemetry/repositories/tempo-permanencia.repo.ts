@@ -5,6 +5,27 @@ import { normalizeText } from "../../../shared/normalizer/index.js";
 export type TempoPermanenciaMap = Map<string, number>;
 
 /**
+ * Converte o tempo permitido para minutos. Aceita "HH:MM:SS"/"HH:MM"
+ * (formato da coluna no banco), ou um número (minutos). Retorna null se inválido.
+ */
+function parseMinutos(raw: unknown): number | null {
+  if (raw == null) return null;
+  const s = String(raw).trim();
+  if (!s) return null;
+
+  if (s.includes(":")) {
+    const parts = s.split(":").map((p) => Number(p));
+    if (parts.some((n) => !Number.isFinite(n))) return null;
+    const [h = 0, m = 0, sec = 0] = parts;
+    const total = h * 60 + m + sec / 60;
+    return total > 0 ? Math.round(total) : null;
+  }
+
+  const n = Number(s);
+  return Number.isFinite(n) && n > 0 ? Math.round(n) : null;
+}
+
+/**
  * Extrai ORIGEM e tempo permitido (minutos) de uma linha da tabela,
  * tolerante a variações de nome de coluna (com/sem acento, snake_case).
  * Retorna null quando a linha não tem origem ou tempo válido.
@@ -12,15 +33,15 @@ export type TempoPermanenciaMap = Map<string, number>;
 function parseRow(row: Record<string, unknown>): { origem: string; minutos: number } | null {
   const origem = String(row["ORIGEM"] ?? row["origem"] ?? "").trim();
 
-  const minutos = Number(
+  const minutos = parseMinutos(
     row["Tempo de Permanencia"] ??
       row["Tempo de Permanência"] ??
       row["tempo_permanencia"] ??
       row["tempo"],
   );
 
-  if (!origem || !Number.isFinite(minutos) || minutos <= 0) return null;
-  return { origem, minutos: Math.round(minutos) };
+  if (!origem || minutos == null) return null;
+  return { origem, minutos };
 }
 
 /**

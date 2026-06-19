@@ -44,12 +44,58 @@ function classificar(p: Point): string {
   return "Ponto comum";
 }
 
+// Palavras genéricas ignoradas ao casar o nome do local com a ORIGEM cadastrada.
+const MATCH_STOPWORDS = new Set([
+  "de", "do", "da", "dos", "das", "e",
+  "rodoviaria", "rodoviario", "rod", "terminal", "garagem", "ponto", "parada",
+]);
+
+function tokenize(s: string): string[] {
+  return normalizeText(s)
+    .split(/[^a-z0-9]+/)
+    .filter((t) => t.length >= 2 && !MATCH_STOPWORDS.has(t));
+}
+
+/**
+ * Procura o tempo permitido (minutos) para um ponto.
+ * 1) match exato por nome normalizado;
+ * 2) match aproximado: todos os tokens significativos do ponto (cidade + UF)
+ *    devem estar contidos na ORIGEM cadastrada — escolhe a ORIGEM com menos
+ *    tokens "extras" (mais específica), evitando casar por palavra ambígua.
+ */
+function lookupTempoPermitido(ponto: string, tempoMap: TempoPermanenciaMap): number | null {
+  const exact = tempoMap.get(normalizeText(ponto));
+  if (exact != null) return exact;
+
+  const placeTokens = tokenize(ponto);
+  if (placeTokens.length === 0) return null;
+
+  let best: number | null = null;
+  let bestExtra = Infinity;
+  for (const [key, min] of tempoMap) {
+    const keyTokens = tokenize(key);
+    if (keyTokens.length === 0) continue;
+    const allIn = placeTokens.every((t) => keyTokens.includes(t));
+    if (!allIn) continue;
+    const extra = keyTokens.length - placeTokens.length;
+    if (extra < bestExtra) {
+      best = min;
+      bestExtra = extra;
+    }
+  }
+  return best;
+}
+
 /**
  * Extrai as paradas em excesso a partir dos pontos da análise.
  * Usa o tempo cadastrado em TEMPO_PERMANENCIA por ORIGEM; quando o ponto
  * não está cadastrado, cai no limite padrão (rodoviária/garagem/comum).
  */
-export function extractExcessos(points: Point[], tempoMap: TempoPermanenciaMap): ExcessoParada[] {
+export function extractExcessos(
+  points: Point[],
+  tempoMap: TempoPermanenciaMap,
+  opts: { fuzzy?: boolean } = {},
+): ExcessoParada[] {
   const out: ExcessoParada[] = [];
 
   for (const p of points) {
@@ -57,7 +103,9 @@ export function extractExcessos(points: Point[], tempoMap: TempoPermanenciaMap):
 
     const paradaMin = toMinutes(p.parada_s);
 
-    const cadastrado = tempoMap.get(normalizeText(p.ponto));
+    const cadastrado = opts.fuzzy
+      ? lookupTempoPermitido(p.ponto, tempoMap)
+      : (tempoMap.get(normalizeText(p.ponto)) ?? null);
 
     let permitidoMin: number;
     let limiteEfetivoMin: number; // a partir do qual conta como excesso

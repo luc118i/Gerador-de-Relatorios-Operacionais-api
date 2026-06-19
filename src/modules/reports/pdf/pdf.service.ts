@@ -201,6 +201,10 @@ async function buildExcessoPermanenciaHtml(
   let paradaS = (hf * 60 + mf - (hi * 60 + mi)) * 60;
   if (paradaS <= 0) paradaS += 24 * 3600;
 
+  const placeLc = (occurrence.place ?? "").toLowerCase();
+  const rodoviaria = /rodovi[áa]ri/.test(placeLc);
+  const garagem = placeLc.includes("garagem");
+
   const excessos = extractExcessos(
     [
       {
@@ -209,9 +213,12 @@ async function buildExcessoPermanenciaHtml(
         entrada: `${eventDate} ${startTime}:00`,
         saida: `${saidaDate} ${endTime}:00`,
         parada_s: paradaS,
+        rodoviaria,
+        garagem,
       },
     ],
     tempoMap,
+    { fuzzy: true },
   );
 
   const motorista = drivers

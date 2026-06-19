@@ -51,6 +51,7 @@ export async function getExcessoParadaManualPdfHandler(req: Request, res: Respon
     const excessos = extractExcessos(
       [{ seq: 1, ponto: b.localParada, entrada, saida, parada_s: paradaS }],
       tempoMap,
+      { fuzzy: true },
     );
 
     if (excessos.length === 0) {
