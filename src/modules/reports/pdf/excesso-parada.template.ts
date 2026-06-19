@@ -265,10 +265,6 @@ export function buildExcessoParadaReportHtml(args: {
           </tr>
         </tfoot>
       </table>
-      <div class="legenda">
-        Tempo permitido conforme cadastro por ponto (TEMPO_PERMAN&#202;NCIA). Pontos sem cadastro usam o limite padr&#227;o
-        (Rodovi&#225;ria 15min &#183; Garagem 20min &#183; Ponto comum 40min, com 5min de toler&#226;ncia).
-      </div>
     </div>`;
 
   // ── Registro fotográfico (evidências) ───────────────────────────────────────
@@ -349,7 +345,6 @@ export function buildExcessoParadaReportHtml(args: {
     .exc-warn { color: #b45309; }
     table.exc tfoot td { background: #f3f4f6; font-weight: 700; }
     .c-foot { text-align: right; }
-    .legenda { padding: 8px 10px; font-size: 8.5pt; color: #666; line-height: 1.35; background: #fff; }
 
     /* Registro fotográfico */
     .ev-section { padding: 12px 14px; background: #fff; }
