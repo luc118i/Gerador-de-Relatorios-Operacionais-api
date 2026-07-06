@@ -387,7 +387,21 @@ export function buildAnaliseOpPdfHtml(args: {
   const periodo       = startFmt !== endFmt  ? `${startFmt} às ${endFmt}` : startFmt;
   const tripTimeFmt   = occurrence.tripTime  ? fmtTimeBr(occurrence.tripTime)  : null;
 
-  const relatoHtml = occurrence.relatoHtml ?? "<p><em>Sem relato registrado.</em></p>";
+  // O GAS pode embutir a tripulação (blocos de motorista + trecho) no relato,
+  // delimitada por <!--TRIPULANTE:START-->...<!--TRIPULANTE:END-->. Extraímos
+  // esse trecho para renderizar como seção própria "TRIPULANTE", logo abaixo de
+  // DADOS DA VIAGEM. O restante do relato segue em RELATÓRIO OPERACIONAL.
+  const rawRelato = occurrence.relatoHtml ?? "<p><em>Sem relato registrado.</em></p>";
+  const crewMatch = rawRelato.match(/<!--TRIPULANTE:START-->([\s\S]*?)<!--TRIPULANTE:END-->/);
+  const crewHtml = crewMatch ? crewMatch[1] : "";
+  const relatoHtml = crewMatch ? rawRelato.replace(crewMatch[0], "") : rawRelato;
+
+  const tripulanteSection = crewHtml
+    ? `<div class="section">
+    <div class="section-hd">TRIPULANTE</div>
+    <div class="text-area">${crewHtml}</div>
+  </div>`
+    : "";
 
   const logoHtml = logoDataUri
     ? `<img class="logo" src="${logoDataUri}" alt="Logo" />`
@@ -432,21 +446,26 @@ export function buildAnaliseOpPdfHtml(args: {
     return              `<tr><td class="lbl">${lb}</td><td class="val" colspan="3">${vb}</td></tr>`;
   };
 
+  // Cada motorista em sua própria linha: matrícula em destaque, nome, base discreta.
   const motoristaText = drivers.length > 0
     ? drivers.map((d) => {
-        const parts: string[] = [];
-        if (d.code) parts.push(escapeHtml(d.code));
-        parts.push(escapeHtml(d.name || "—"));
-        if (d.baseCode) parts.push(escapeHtml(d.baseCode));
-        return parts.join(" - ");
-      }).join(" / ")
+        const mat  = d.code
+          ? `<strong style="color:#c25a00;">${escapeHtml(d.code)}</strong><span style="color:#c9ccd4;">&nbsp;&#8226;&nbsp;</span>`
+          : "";
+        const nome = `<span style="font-weight:600;">${escapeHtml(d.name || "—")}</span>`;
+        const base = d.baseCode
+          ? `<span style="color:#8a8f99;">&nbsp;&#8226;&nbsp;${escapeHtml(d.baseCode)}</span>`
+          : "";
+        return `<div style="padding:1px 0;line-height:1.5;">${mat}${nome}${base}</div>`;
+      }).join("")
     : "";
+  const motoristaLabel = drivers.length > 1 ? "Motoristas:" : "Motorista:";
 
   const rowsViagem =
     rowPair("Itiner&#225;rio:", itinerario, "Hor&#225;rio da Viagem:", tripTimeFmt ? escapeHtml(tripTimeFmt) : "") +
     rowPair("Prefixo do Ve&#237;culo:", prefixo, "Data da Viagem:", tripDate) +
     rowPair("Per&#237;odo:", periodo, "Data do Relat&#243;rio:", escapeHtml(fmtDateBrFromDate(new Date()))) +
-    (motoristaText ? rowFull("Motorista:", motoristaText) : "");
+    (motoristaText ? rowFull(motoristaLabel, motoristaText) : "");
 
   return `<!doctype html>
 <html>
@@ -623,6 +642,9 @@ export function buildAnaliseOpPdfHtml(args: {
     <div class="section-hd">DADOS DA VIAGEM</div>
     <table class="dt">${rowsViagem}</table>
   </div>
+
+  <!-- ══ TRIPULANTE ══ -->
+  ${tripulanteSection}
 
   <!-- ══ RELATO / ANÁLISE ══ -->
   <div class="section">
