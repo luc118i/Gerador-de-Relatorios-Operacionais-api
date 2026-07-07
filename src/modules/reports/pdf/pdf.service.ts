@@ -10,6 +10,7 @@ import {
 import {
   downloadPrivateFileAsBuffer,
   uploadPrivatePdf,
+  uploadPrivateFile,
   createSignedUrl,
   pdfExists,
 } from "./pdf.storage.js";
@@ -17,27 +18,24 @@ import { buildOccurrencePdfHtml, buildGenericOccurrencePdfHtml, buildAnaliseOpPd
 import { extractExcessos, buildExcessoParadaReportHtml, type ExcessoEvidence } from "./excesso-parada.template.js";
 import { getTempoPermanenciaMap } from "../../telemetry/repositories/tempo-permanencia.repo.js";
 import { renderPdfFromHtml } from "./pdf.puppeteer.js";
+import { renderDocxFromHtml } from "./docx.render.js";
 import type { BuildPdfResult, PdfEvidence, PdfOccurrence, PdfDriver } from "./pdf.types.js";
+
+const DOCX_MIME =
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
 const EVIDENCES_BUCKET = process.env.SUPABASE_BUCKET ?? "occurrence-evidences";
 const REPORTS_BUCKET = process.env.SUPABASE_REPORTS_BUCKET ?? "reports";
 
-export async function buildOccurrencePdf(args: {
-  occurrenceId: string;
-  force?: boolean;
-  ttlSeconds?: number;
-  maxPhotos?: number;
-}): Promise<BuildPdfResult> {
-  const occurrenceId = args.occurrenceId;
-  const force = args.force ?? false;
-
-  const ttlSeconds = clamp(
-    args.ttlSeconds ?? Number(process.env.REPORTS_PDF_TTL ?? 3600),
-    60,
-    86400,
-  );
-  const maxPhotos = clamp(args.maxPhotos ?? 20, 1, 50);
-
+/**
+ * Monta o HTML de uma ocorrência (mesma fonte usada por PDF e DOCX).
+ * Faz o fetch da ocorrência, embute as evidências e seleciona o template
+ * conforme o typeCode.
+ */
+async function buildOccurrenceHtml(
+  occurrenceId: string,
+  maxPhotos: number,
+): Promise<string> {
   const occurrence = await getOccurrenceForPdf(occurrenceId);
 
   const [drivers, evidences] = await Promise.all([
@@ -56,22 +54,6 @@ export async function buildOccurrencePdf(args: {
       `Limite de evidências excedido (max ${maxPhotos})`,
       "EVIDENCES_LIMIT",
     );
-  }
-
-  const pdfStoragePath = `occurrences/${occurrenceId}/report.pdf`;
-
-  if (!force) {
-    const exists = await pdfExists(REPORTS_BUCKET, pdfStoragePath);
-
-    if (exists) {
-      const signedUrl = await createSignedUrl(
-        REPORTS_BUCKET,
-        pdfStoragePath,
-        ttlSeconds,
-      );
-
-      return { pdfStoragePath, signedUrl, ttlSeconds, cached: true };
-    }
   }
 
   const embedded = await Promise.all(
@@ -112,44 +94,77 @@ export async function buildOccurrencePdf(args: {
   );
 
   // Seleciona template pelo typeCode
-  let html: string;
   if (occurrence.typeCode === "GENERICO") {
-    html = buildGenericOccurrencePdfHtml({
+    return buildGenericOccurrencePdfHtml({
       occurrence,
       drivers,
-      evidences: embedded,
-      logoDataUri: getLogoDataUri(),
-    });
-  } else if (occurrence.typeCode === "ANALISE_OP") {
-    html = buildAnaliseOpPdfHtml({
-      occurrence,
-      drivers,
-      evidences: embedded,
-      logoDataUri: getLogoDataUri(),
-    });
-  } else if (occurrence.typeCode === "EXCESSO_PERMANENCIA") {
-    html = await buildExcessoPermanenciaHtml(occurrence, drivers, embedded);
-  } else {
-    const isParadaFora = occurrence.typeCode === "DESCUMP_OP_PARADA_FORA";
-    // For DESCUMP_OP_PARADA_FORA: standard text before evidences, schema after
-    const reportHtml = isParadaFora
-      ? undefined
-      : (buildReportHtml(occurrence) ?? occurrence.relatoHtml ?? undefined);
-    const schemaHtml = isParadaFora
-      ? (occurrence.relatoHtml ?? undefined)
-      : undefined;
-
-    html = buildOccurrencePdfHtml({
-      occurrence,
-      drivers,
-      reportText: "",
-      ...(reportHtml !== undefined && { reportHtml }),
-      ...(schemaHtml !== undefined && { schemaHtml }),
       evidences: embedded,
       logoDataUri: getLogoDataUri(),
     });
   }
+  if (occurrence.typeCode === "ANALISE_OP") {
+    return buildAnaliseOpPdfHtml({
+      occurrence,
+      drivers,
+      evidences: embedded,
+      logoDataUri: getLogoDataUri(),
+    });
+  }
+  if (occurrence.typeCode === "EXCESSO_PERMANENCIA") {
+    return buildExcessoPermanenciaHtml(occurrence, drivers, embedded);
+  }
 
+  const isParadaFora = occurrence.typeCode === "DESCUMP_OP_PARADA_FORA";
+  // For DESCUMP_OP_PARADA_FORA: standard text before evidences, schema after
+  const reportHtml = isParadaFora
+    ? undefined
+    : (buildReportHtml(occurrence) ?? occurrence.relatoHtml ?? undefined);
+  const schemaHtml = isParadaFora
+    ? (occurrence.relatoHtml ?? undefined)
+    : undefined;
+
+  return buildOccurrencePdfHtml({
+    occurrence,
+    drivers,
+    reportText: "",
+    ...(reportHtml !== undefined && { reportHtml }),
+    ...(schemaHtml !== undefined && { schemaHtml }),
+    evidences: embedded,
+    logoDataUri: getLogoDataUri(),
+  });
+}
+
+export async function buildOccurrencePdf(args: {
+  occurrenceId: string;
+  force?: boolean;
+  ttlSeconds?: number;
+  maxPhotos?: number;
+}): Promise<BuildPdfResult> {
+  const occurrenceId = args.occurrenceId;
+  const force = args.force ?? false;
+
+  const ttlSeconds = clamp(
+    args.ttlSeconds ?? Number(process.env.REPORTS_PDF_TTL ?? 3600),
+    60,
+    86400,
+  );
+  const maxPhotos = clamp(args.maxPhotos ?? 20, 1, 50);
+
+  const pdfStoragePath = `occurrences/${occurrenceId}/report.pdf`;
+
+  if (!force) {
+    const exists = await pdfExists(REPORTS_BUCKET, pdfStoragePath);
+    if (exists) {
+      const signedUrl = await createSignedUrl(
+        REPORTS_BUCKET,
+        pdfStoragePath,
+        ttlSeconds,
+      );
+      return { pdfStoragePath, signedUrl, ttlSeconds, cached: true };
+    }
+  }
+
+  const html = await buildOccurrenceHtml(occurrenceId, maxPhotos);
   const pdfBuffer = await renderPdfFromHtml(html);
 
   await uploadPrivatePdf(REPORTS_BUCKET, pdfStoragePath, pdfBuffer);
@@ -161,6 +176,61 @@ export async function buildOccurrencePdf(args: {
   );
 
   return { pdfStoragePath, signedUrl, ttlSeconds, cached: false };
+}
+
+export type BuildDocxResult = {
+  storagePath: string;
+  signedUrl: string;
+  ttlSeconds: number;
+  cached: boolean;
+};
+
+/**
+ * Gera o relatório em Word (.docx) a partir do mesmo HTML do PDF.
+ * Cacheia em Storage como report.docx e devolve uma signed URL.
+ */
+export async function buildOccurrenceDocx(args: {
+  occurrenceId: string;
+  force?: boolean;
+  ttlSeconds?: number;
+  maxPhotos?: number;
+}): Promise<BuildDocxResult> {
+  const occurrenceId = args.occurrenceId;
+  const force = args.force ?? false;
+
+  const ttlSeconds = clamp(
+    args.ttlSeconds ?? Number(process.env.REPORTS_PDF_TTL ?? 3600),
+    60,
+    86400,
+  );
+  const maxPhotos = clamp(args.maxPhotos ?? 20, 1, 50);
+
+  const storagePath = `occurrences/${occurrenceId}/report.docx`;
+
+  if (!force) {
+    const exists = await pdfExists(REPORTS_BUCKET, storagePath);
+    if (exists) {
+      const signedUrl = await createSignedUrl(
+        REPORTS_BUCKET,
+        storagePath,
+        ttlSeconds,
+      );
+      return { storagePath, signedUrl, ttlSeconds, cached: true };
+    }
+  }
+
+  const html = await buildOccurrenceHtml(occurrenceId, maxPhotos);
+  const docxBuffer = await renderDocxFromHtml(html);
+
+  await uploadPrivateFile(REPORTS_BUCKET, storagePath, docxBuffer, DOCX_MIME);
+
+  const signedUrl = await createSignedUrl(
+    REPORTS_BUCKET,
+    storagePath,
+    ttlSeconds,
+  );
+
+  return { storagePath, signedUrl, ttlSeconds, cached: false };
 }
 
 function clamp(n: number, min: number, max: number) {

@@ -20,29 +20,42 @@ export async function downloadPrivateFileAsBuffer(
   return Buffer.from(ab);
 }
 
-export async function uploadPrivatePdf(
+/**
+ * Faz upload de um arquivo privado com o content-type informado.
+ * Base para PDF e DOCX (e qualquer outro formato futuro).
+ */
+export async function uploadPrivateFile(
   bucket: string,
   path: string,
-  pdfBuffer: Buffer,
+  buffer: Buffer,
+  contentType: string,
 ): Promise<void> {
   const { error } = await supabaseAdmin.storage
     .from(bucket)
-    .upload(path, pdfBuffer, {
-      contentType: "application/pdf",
+    .upload(path, buffer, {
+      contentType,
       upsert: true,
       cacheControl: "3600",
     });
 
   if (error) {
-    // ISSO VAI MOSTRAR O ERRO REAL NO LOG DA KOYEB (ex: Bucket not found, Payload too large)
-    console.error("[pdf:upload] Erro detalhado do Supabase:", error);
+    // MOSTRA O ERRO REAL NO LOG (ex: Bucket not found, Payload too large)
+    console.error("[storage:upload] Erro detalhado do Supabase:", error);
 
     throw new AppError(
       500,
-      `Falha ao salvar PDF no Storage: ${error.message}`,
+      `Falha ao salvar arquivo no Storage: ${error.message}`,
       "STORAGE_UPLOAD_FAILED",
     );
   }
+}
+
+export async function uploadPrivatePdf(
+  bucket: string,
+  path: string,
+  pdfBuffer: Buffer,
+): Promise<void> {
+  return uploadPrivateFile(bucket, path, pdfBuffer, "application/pdf");
 }
 
 export async function createSignedUrl(
