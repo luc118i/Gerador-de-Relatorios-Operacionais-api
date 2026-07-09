@@ -19,8 +19,8 @@ export function tripsRoutes(app: Express) {
 
   app.get("/trips/lookup", async (req, res, next) => {
     try {
-      const { lineName, departureTime } = lookupTripSchema.parse(req.query);
-      const trip = await lookupTrip(lineName, departureTime);
+      const params = lookupTripSchema.parse(req.query);
+      const trip = await lookupTrip(params);
       if (!trip) return res.status(404).json({ message: "Viagem não encontrada" });
       return res.json(trip);
     } catch (err) {
