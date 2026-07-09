@@ -135,6 +135,10 @@ export async function listOccurrencesByDay(date: string) {
     eventDate: o.event_date,
     tripDate: o.trip_date,
     tripId: o.trip_id ?? null,
+    // Viagem canônica (join trips por trip_id). O sentido vem daqui, não do nome.
+    tripLineCode: o.trip?.line_code ?? null,
+    tripLineName: o.trip?.line_name ?? null,
+    tripDirection: o.trip?.direction ?? null,
     startTime: o.start_time?.slice(0, 5),
     endTime: o.end_time?.slice(0, 5),
     vehicleNumber: o.vehicle_number,
@@ -270,6 +274,17 @@ export async function getOccurrenceById(id: string) {
 
   const o: any = data;
 
+  // Viagem canônica (código/nome/sentido) — busca separada por trip_id para não
+  // depender de FK/embed do PostgREST. O sentido é servido daqui, não do nome.
+  if (o.trip_id) {
+    const { data: t } = await supabaseAdmin
+      .from("trips")
+      .select("line_code, line_name, direction")
+      .eq("id", o.trip_id)
+      .maybeSingle();
+    o.trip = t ?? null;
+  }
+
   return {
     id: o.id,
     typeCode: o.occurrence_types?.code ?? null,
@@ -277,6 +292,10 @@ export async function getOccurrenceById(id: string) {
     eventDate: o.event_date,
     tripDate: o.trip_date,
     tripId: o.trip_id ?? null,
+    // Viagem canônica (join trips por trip_id). O sentido vem daqui, não do nome.
+    tripLineCode: o.trip?.line_code ?? null,
+    tripLineName: o.trip?.line_name ?? null,
+    tripDirection: o.trip?.direction ?? null,
     startTime: o.start_time?.slice(0, 5),
     endTime: o.end_time?.slice(0, 5),
     vehicleNumber: o.vehicle_number,
