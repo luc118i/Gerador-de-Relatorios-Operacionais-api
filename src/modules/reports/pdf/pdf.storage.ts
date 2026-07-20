@@ -62,10 +62,15 @@ export async function createSignedUrl(
   bucket: string,
   path: string,
   ttlSeconds: number,
+  downloadFilename?: string,
 ): Promise<string> {
   const { data, error } = await supabaseAdmin.storage
     .from(bucket)
-    .createSignedUrl(path, ttlSeconds);
+    .createSignedUrl(
+      path,
+      ttlSeconds,
+      downloadFilename ? { download: downloadFilename } : undefined,
+    );
   if (error || !data?.signedUrl)
     throw new AppError(500, "Falha ao gerar signedUrl", "SIGNED_URL_FAILED");
   return data.signedUrl;

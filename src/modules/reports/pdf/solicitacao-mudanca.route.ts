@@ -48,7 +48,15 @@ export async function getSolicitacaoMudancaPdfHandler(req: Request, res: Respons
     const storagePath = `solicitacao-mudanca/${randomUUID()}.pdf`;
     await uploadPrivatePdf(BUCKET, storagePath, buffer);
 
-    const url = await createSignedUrl(BUCKET, storagePath, TTL);
+    // downloadFilename faz o Supabase devolver Content-Disposition: attachment,
+    // então o navegador baixa o arquivo em vez de só abrir o PDF na aba.
+    const slugItinerario = b.itinerario
+      .normalize("NFD").replace(/[̀-ͯ]/g, "")
+      .replace(/[^a-zA-Z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "");
+    const downloadFilename = `Solicitacao_Mudanca_${slugItinerario || "linha"}.pdf`;
+
+    const url = await createSignedUrl(BUCKET, storagePath, TTL, downloadFilename);
     return res.json({ url });
   } catch (err) {
     next(err);

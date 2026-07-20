@@ -127,7 +127,17 @@ export function buildSolicitacaoMudancaPdfHtml(args: {
   <style>
     @page { size: A4; margin-top: 15mm; margin-right: 14mm; margin-left: 14mm; margin-bottom: 20mm; }
     * { box-sizing: border-box; }
-    body { font-family: "Segoe UI", Arial, Helvetica, sans-serif; font-size: 10.5pt; color: #111; margin: 0; padding: 0; background: #fff; }
+    /* min-height = altura útil do A4 (297mm) menos as margens do @page
+       (15mm + 20mm) — junto com o .sig-wrap { margin-top: auto } abaixo,
+       empurra o bloco de assinaturas para o rodapé da página quando o
+       conteúdo acima não a preenche, em vez de ficar colado no meio. */
+    html, body { height: 100%; }
+    body {
+      font-family: "Segoe UI", Arial, Helvetica, sans-serif; font-size: 10.5pt; color: #111;
+      margin: 0; padding: 0; background: #fff;
+      min-height: calc(297mm - 35mm);
+      display: flex; flex-direction: column;
+    }
 
     /* Cabeçalho (padrão GENERICO/ANALISE_OP) */
     .doc-header { display: flex; align-items: stretch; margin-bottom: 12px; border: 1px solid #ccc; }
@@ -207,20 +217,23 @@ export function buildSolicitacaoMudancaPdfHtml(args: {
     </table>
   </div>
 
-  <!-- ASSINATURAS -->
-  <div class="section" style="border:none; margin-top:26px;">
-    <div class="section-hd">ASSINATURAS</div>
+  <!-- ASSINATURAS — margin-top:auto empurra pro rodapé da página (ver
+       body{display:flex;flex-direction:column} acima) -->
+  <div class="sig-wrap" style="margin-top:auto;">
+    <div class="section" style="border:none; margin-top:26px;">
+      <div class="section-hd">ASSINATURAS</div>
+    </div>
+    <table class="sig">
+      <tr>
+        <td><div class="sig-line"></div><div class="sig-label">Assinatura</div></td>
+        <td><div class="sig-line"></div><div class="sig-label">Assinatura</div></td>
+      </tr>
+      <tr>
+        <td class="sig-role">Aprovador 1</td>
+        <td class="sig-role">Aprovador 2</td>
+      </tr>
+    </table>
   </div>
-  <table class="sig">
-    <tr>
-      <td><div class="sig-line"></div><div class="sig-label">Assinatura</div></td>
-      <td><div class="sig-line"></div><div class="sig-label">Assinatura</div></td>
-    </tr>
-    <tr>
-      <td class="sig-role">Aprovador 1</td>
-      <td class="sig-role">Aprovador 2</td>
-    </tr>
-  </table>
 
 </body>
 </html>`;
