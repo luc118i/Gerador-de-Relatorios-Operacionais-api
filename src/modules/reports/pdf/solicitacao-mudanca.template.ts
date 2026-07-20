@@ -181,11 +181,15 @@ export function buildSolicitacaoMudancaPdfHtml(args: {
     table.hor .sug-atencao { color: #c0121c; }
     table.hor .sug-ok { color: #385623; }
 
-    /* Assinaturas */
-    table.sig { width: 100%; border-collapse: collapse; margin-top: 6px; }
+    /* Assinaturas — compacto de propósito: se o bloco inteiro não couber
+       no espaço restante da página (page-break-inside:avoid, ver abaixo),
+       o Chromium empurra ele inteiro pra próxima página, deixando uma
+       página quase vazia só com isso. Quanto menor a altura total, maior a
+       chance de caber no que sobrou da última página da tabela. */
+    table.sig { width: 100%; border-collapse: collapse; margin-top: 4px; }
     table.sig td { width: 50%; border: none; padding: 0 20px; vertical-align: bottom; }
-    .sig-line { border-bottom: 1px solid #444; margin-top: 34px; }
-    .sig-label { text-align: center; color: #666; font-size: 8pt; margin-top: 6px; }
+    .sig-line { border-bottom: 1px solid #444; margin-top: 18px; }
+    .sig-label { text-align: center; color: #666; font-size: 8pt; margin-top: 4px; }
     .sig-role { text-align: center; color: #111; font-size: 9.5pt; font-weight: 700; margin-top: 2px; }
   </style>
 </head>
@@ -226,11 +230,13 @@ export function buildSolicitacaoMudancaPdfHtml(args: {
     </table>
   </div>
 
-  <!-- ASSINATURAS — margem fixa generosa antes, em vez de empurrar pro
-       rodapé exato da página (isso exigiria flex no body, que quebra a
-       paginação de tabelas longas — ver nota no <style> acima). -->
-  <div class="sig-wrap" style="margin-top:40px; page-break-inside: avoid;">
-    <div class="section" style="border:none; margin-top:26px;">
+  <!-- ASSINATURAS — margem enxuta e bloco compacto, pra ter a melhor chance
+       de caber no que sobrou da página (empurrar pro rodapé exato exigiria
+       flex no body, que quebra a paginação de tabelas longas — ver nota
+       no <style> acima). page-break-inside:avoid impede o bloco de ficar
+       partido ao meio entre duas páginas se não couber de jeito nenhum. -->
+  <div class="sig-wrap" style="margin-top:14px; page-break-inside: avoid;">
+    <div class="section" style="border:none; margin-top:10px;">
       <div class="section-hd">ASSINATURAS</div>
     </div>
     <table class="sig">
