@@ -125,18 +125,21 @@ export function buildSolicitacaoMudancaPdfHtml(args: {
   <meta charset="utf-8" />
   <title>An&#225;lise Operacional &#8212; Solicita&#231;&#227;o de Mudan&#231;a</title>
   <style>
-    @page { size: A4; margin-top: 15mm; margin-right: 14mm; margin-left: 14mm; margin-bottom: 20mm; }
+    /* Landscape: a grade tem uma coluna por viagem importada (pode passar
+       de 6-7 datas), o que fica muito apertado em retrato — a largura
+       extra ajuda a caber sem espremer o texto. */
+    @page { size: A4 landscape; margin-top: 15mm; margin-right: 14mm; margin-left: 14mm; margin-bottom: 20mm; }
     * { box-sizing: border-box; }
-    /* min-height = altura útil do A4 (297mm) menos as margens do @page
-       (15mm + 20mm) — junto com o .sig-wrap { margin-top: auto } abaixo,
-       empurra o bloco de assinaturas para o rodapé da página quando o
-       conteúdo acima não a preenche, em vez de ficar colado no meio. */
-    html, body { height: 100%; }
+    /* display:flex no body quebra a paginação do Chromium (page.pdf): um
+       container flex não fragmenta corretamente entre páginas, então
+       conteúdo que precisa de mais de uma página física fica cortado/
+       espremido numa única página. Fluxo normal (sem flex) deixa o
+       navegador paginar a tabela linha a linha via page-break-inside:auto
+       — a assinatura só fica com uma margem generosa antes dela em vez de
+       grudada no rodapé exato da página. */
     body {
       font-family: "Segoe UI", Arial, Helvetica, sans-serif; font-size: 10.5pt; color: #111;
       margin: 0; padding: 0; background: #fff;
-      min-height: calc(297mm - 35mm);
-      display: flex; flex-direction: column;
     }
 
     /* Cabeçalho (padrão GENERICO/ANALISE_OP) */
@@ -152,6 +155,12 @@ export function buildSolicitacaoMudancaPdfHtml(args: {
     /* Seções */
     .section { margin-top: 8px; border: 1px solid #bbb; overflow: hidden; page-break-inside: avoid; }
     .section-hd { background: #1d1d1d; color: #fff; padding: 6px 10px; font-size: 10pt; font-weight: 700; letter-spacing: 0.4px; }
+    /* A seção da grade de horários precisa poder quebrar entre páginas —
+       "avoid" (padrão de .section) tenta manter a seção inteira numa única
+       página, o que briga com table.hor{page-break-inside:auto} e faz
+       linhas da tabela ficarem cortadas/somem quando ela não cabe numa
+       página só. overflow:visible pelo mesmo motivo. */
+    .section-tabela-longa { page-break-inside: auto; overflow: visible; }
 
     /* Tabela DADOS DA VIAGEM */
     table.dt { width: 100%; border-collapse: collapse; font-size: 10.5pt; }
@@ -199,7 +208,7 @@ export function buildSolicitacaoMudancaPdfHtml(args: {
   </div>
 
   <!-- GRADE DE HORÁRIOS -->
-  <div class="section">
+  <div class="section section-tabela-longa">
     <div class="section-hd">LOCAIS COM MAIOR DESVIO DE HOR&#193;RIO</div>
     <table class="hor">
       <thead>
@@ -217,9 +226,10 @@ export function buildSolicitacaoMudancaPdfHtml(args: {
     </table>
   </div>
 
-  <!-- ASSINATURAS — margin-top:auto empurra pro rodapé da página (ver
-       body{display:flex;flex-direction:column} acima) -->
-  <div class="sig-wrap" style="margin-top:auto;">
+  <!-- ASSINATURAS — margem fixa generosa antes, em vez de empurrar pro
+       rodapé exato da página (isso exigiria flex no body, que quebra a
+       paginação de tabelas longas — ver nota no <style> acima). -->
+  <div class="sig-wrap" style="margin-top:40px; page-break-inside: avoid;">
     <div class="section" style="border:none; margin-top:26px;">
       <div class="section-hd">ASSINATURAS</div>
     </div>
