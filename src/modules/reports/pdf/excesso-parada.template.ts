@@ -3,7 +3,7 @@ import { getStopLimit } from "../../telemetry/constants/stop-thresholds.js";
 import { formatDuration, formatDatetimeFull, toMinutes } from "../../../shared/time/index.js";
 import { normalizeText } from "../../../shared/normalizer/index.js";
 
-type Point = {
+export type Point = {
   seq: number;
   ponto: string;
   entrada: string | null;
