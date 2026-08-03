@@ -1,6 +1,6 @@
 import type { Express } from "express";
-import { searchLocaisSchema } from "./locais.schemas.js";
-import { listLocais } from "./locais.service.js";
+import { searchLocaisSchema, createLocalSchema } from "./locais.schemas.js";
+import { listLocais, createLocal } from "./locais.service.js";
 
 export function locaisRoutes(app: Express) {
   app.get("/locais", async (req, res, next) => {
@@ -10,6 +10,16 @@ export function locaisRoutes(app: Express) {
         ...(parsed.search ? { search: parsed.search } : {}),
       });
       res.json({ data });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  app.post("/locais", async (req, res, next) => {
+    try {
+      const parsed = createLocalSchema.parse(req.body);
+      const created = await createLocal(parsed);
+      res.status(201).json(created);
     } catch (err) {
       next(err);
     }
