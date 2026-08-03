@@ -300,6 +300,8 @@ async function buildExcessoPermanenciaHtml(
     dataViagem: occurrence.tripDate ?? "",
     dataEvento: occurrence.eventDate ?? "",
     motorista: motorista || null,
+    linha: occurrence.lineLabel ?? null,
+    horarioSessao: occurrence.sessionTime ?? null,
     excessos,
     evidences,
     logoDataUri: getLogoDataUri(),

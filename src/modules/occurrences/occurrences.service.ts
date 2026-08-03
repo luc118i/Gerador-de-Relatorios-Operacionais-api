@@ -13,7 +13,7 @@ import {
 
 import { fetchTripById } from "../trips/trips.repo.js";
 
-import { notifyAppsScript } from "../../core/infra/appsScript.service.js";
+import { notifyAppsScript, notifyAppsScriptExcesso } from "../../core/infra/appsScript.service.js";
 
 export async function createOccurrence(payload: any) {
   const typeId = await getTypeIdByCode(payload.typeCode);
@@ -52,6 +52,7 @@ export async function createOccurrence(payload: any) {
     place: payload.place ?? "",
     speed_kmh: payload.speedKmh ?? null,
     trip_time: payload.tripTime || null,
+    session_time: payload.sessionTime || null,
     occurrence_name: payload.occurrenceName ?? null,
     report_title: payload.reportTitle ?? null,
     cco_operator: payload.ccoOperator ?? null,
@@ -181,6 +182,44 @@ export async function createOccurrence(payload: any) {
     }
   }
 
+  // Notifica planilha (aba HISTORICO_EXCESSO) para excedências de tempo de permanência
+  if (payload.typeCode === "EXCESSO_PERMANENCIA" && driver1) {
+    const driver1Snapshot = await getDriverSnapshotByOccurrence(id, 1);
+    const tripData = (!payload.lineLabel && payload.tripId)
+      ? await fetchTripById(payload.tripId)
+      : null;
+    // Só código + nome da linha (sem horário/sentido) — precisa repetir
+    // entre excedências da mesma linha em dias/horários diferentes pra
+    // virar um ranking com sentido no dashboard.
+    const linhaStr = (() => {
+      const label = payload.lineLabel ?? "";
+      if (label) return label;
+      if (tripData) return `${tripData.line_code} - ${tripData.line_name}`;
+      return "";
+    })();
+
+    await notifyAppsScriptExcesso({
+      chave: `${payload.vehicleNumber}|${payload.eventDate} ${payload.startTime}`,
+      data: payload.eventDate,
+      veiculo: payload.vehicleNumber,
+      linha: linhaStr,
+      ponto: payload.place || "—",
+      cidade: payload.cidade ?? "",
+      uf: payload.uf ?? "",
+      regiao: payload.regiao ?? "",
+      motorista: driver1Snapshot?.name ?? "",
+      motoristaCodigo: driver1Snapshot?.registry ?? driver1.driverId ?? "",
+      entrada: `${payload.eventDate} ${payload.startTime}`,
+      saida: `${payload.eventDate} ${payload.endTime}`,
+      permanenciaMin: payload.permanenciaMin ?? 0,
+      permitidoMin: payload.permitidoMin ?? 0,
+      excedenteMin: payload.excedenteMin ?? 0,
+      occurrenceId: id,
+      lat: payload.lat ?? null,
+      lng: payload.lng ?? null,
+    });
+  }
+
   return paradaForaIds.length > 0 ? { id, paradaForaIds } : id;
 }
 
@@ -249,6 +288,7 @@ export async function updateOccurrence(id: string, payload: any) {
     place: payload.place ?? "",
     speed_kmh: payload.speedKmh ?? null,
     trip_time: payload.tripTime || null,
+    session_time: payload.sessionTime || null,
     occurrence_name: payload.occurrenceName ?? null,
     report_title: payload.reportTitle ?? null,
     cco_operator: payload.ccoOperator ?? null,

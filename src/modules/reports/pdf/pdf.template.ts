@@ -623,6 +623,24 @@ export function buildAnaliseOpPdfHtml(args: {
     }
     .doc-footer .left { line-height: 1.5; }
     .doc-footer .right { text-align: right; line-height: 1.5; }
+
+    /* ── Assinatura (equipe de monitoramento) ── */
+    .signature-block {
+      margin-top: 28px;
+      padding-top: 10px;
+      border-top: 1px solid #ccc;
+      text-align: center;
+      page-break-inside: avoid;
+    }
+    .signature-block .sig-line {
+      font-size: 9.5pt;
+      color: #555;
+      line-height: 1.5;
+    }
+    .signature-block .sig-company {
+      font-weight: 700;
+      color: #1d1d1d;
+    }
   </style>
 </head>
 <body>
@@ -654,6 +672,12 @@ export function buildAnaliseOpPdfHtml(args: {
 
   <!-- ══ EVIDÊNCIAS ══ -->
   ${evidenceSection}
+
+  <!-- ══ ASSINATURA ══ -->
+  <div class="signature-block">
+    <div class="sig-line">Relat&#243;rio elaborado pela equipe de monitoramento</div>
+    <div class="sig-line sig-company">${escapeHtml(company)}</div>
+  </div>
 
 </body>
 </html>`;

@@ -24,6 +24,7 @@ export const createOccurrenceSchema = z.object({
   placeCode: z.string().nullable().optional(), // código numérico do local (ex: da aba LOCAIS do GAS)
   speedKmh: z.number().int().positive().optional().nullable(),
   tripTime: z.string().nullable().optional().transform((v) => v || null), // horário de partida da viagem (HH:mm)
+  sessionTime: z.string().nullable().optional().transform((v) => v || null), // horário de sessão previsto no ponto (HH:mm), vindo do esquema operacional
 
   lineLabel: z.string().nullable().optional(), // opcional (se quiser)
   occurrenceName: z.string().optional().nullable(), // nome exato no RIZER
@@ -65,6 +66,18 @@ export const createOccurrenceSchema = z.object({
     .array(z.object({ localNome: z.string(), localCodigo: z.string().nullable().optional() }))
     .optional(),
   paradaForaRelatoHtml: z.string().optional().nullable(),
+
+  // Campos do tipo EXCESSO_PERMANENCIA — calculados no front-end
+  // (_detectarExcedencias/_resolverRegiao em tempo_permanencia.html) e só
+  // repassados à planilha via notifyAppsScriptExcesso, sem persistir no Supabase.
+  cidade: z.string().optional(),
+  uf: z.string().optional(),
+  regiao: z.string().optional(),
+  permanenciaMin: z.number().optional(),
+  permitidoMin: z.number().optional(),
+  excedenteMin: z.number().optional(),
+  lat: z.number().nullable().optional(),
+  lng: z.number().nullable().optional(),
 }).superRefine((data, ctx) => {
   const tripulacaoAtiva = data.showSectionTripulacao !== false;
   if (!tripulacaoAtiva) return; // seção desabilitada — sem validação de motoristas

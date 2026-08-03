@@ -26,6 +26,7 @@ export type PdfOccurrence = {
   place: string;
   speedKmh?: number | null;
   tripTime?: string | null; // horário de partida da viagem (HH:mm)
+  sessionTime?: string | null; // horário de sessão previsto no ponto (HH:mm)
 
   reportText: string;
 

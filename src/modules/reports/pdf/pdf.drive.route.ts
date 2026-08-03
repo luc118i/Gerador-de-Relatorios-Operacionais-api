@@ -38,7 +38,7 @@ function abbreviateTitle(title: string): string {
 }
 
 function buildFileName(o: PdfOccurrence, drivers: PdfDriver[]): string {
-  const date = (o.tripDate ?? o.eventDate ?? "").replace(/-/g, ".");
+  const date = (o.eventDate ?? o.tripDate ?? "").replace(/-/g, ".");
   const vehicle = o.vehicleNumber ?? "";
   const driver = drivers[0]?.name?.split(" ").slice(0, 2).join(" ") ?? "";
 

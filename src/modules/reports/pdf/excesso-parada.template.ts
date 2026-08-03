@@ -187,6 +187,8 @@ export function buildExcessoParadaReportHtml(args: {
   prefixo: string;
   dataViagem: string;          // YYYY-MM-DD
   motorista?: string | null;
+  linha?: string | null;
+  horarioSessao?: string | null; // horário previsto no ponto (HH:mm), vindo do esquema operacional
   dataEvento?: string | null;  // YYYY-MM-DD
   excessos: ExcessoParada[];
   evidences?: ExcessoEvidence[];
@@ -197,6 +199,8 @@ export function buildExcessoParadaReportHtml(args: {
 
   const prefixo = (args.prefixo ?? "").trim() || "—";
   const motorista = (args.motorista ?? "").trim();
+  const linha = (args.linha ?? "").trim();
+  const horarioSessao = (args.horarioSessao ?? "").trim();
   const tripDateLabel = fmtDateBr(args.dataViagem ?? "");
   const eventoLabel = (args.dataEvento ?? "").trim() ? fmtDateBr(args.dataEvento!) : "";
   const reportDateLabel = fmtDateBrFromDate(new Date());
@@ -210,6 +214,13 @@ export function buildExcessoParadaReportHtml(args: {
   // Linhas da seção DADOS DA VIAGEM (campos opcionais são omitidos)
   const dadosRows = [
     `<tr><td class="lbl">Prefixo do Ve&#237;culo:</td><td class="val">${esc(prefixo)}</td><td class="lbl">Data da Viagem:</td><td class="val">${esc(tripDateLabel)}</td></tr>`,
+    linha && horarioSessao
+      ? `<tr><td class="lbl">Linha:</td><td class="val">${esc(linha)}</td><td class="lbl">Hor&#225;rio de Sess&#227;o:</td><td class="val">${esc(horarioSessao)}</td></tr>`
+      : linha
+        ? `<tr><td class="lbl">Linha:</td><td class="val" colspan="3">${esc(linha)}</td></tr>`
+        : horarioSessao
+          ? `<tr><td class="lbl">Hor&#225;rio de Sess&#227;o:</td><td class="val" colspan="3">${esc(horarioSessao)}</td></tr>`
+          : "",
     eventoLabel
       ? `<tr><td class="lbl">Data do Evento:</td><td class="val">${esc(eventoLabel)}</td><td class="lbl">Data do Relat&#243;rio:</td><td class="val">${esc(reportDateLabel)}</td></tr>`
       : `<tr><td class="lbl">Data do Relat&#243;rio:</td><td class="val" colspan="3">${esc(reportDateLabel)}</td></tr>`,
