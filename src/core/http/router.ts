@@ -12,6 +12,7 @@ import { presetsRoutes } from "../../modules/presets/presets.routes.js";
 import { routeSchemesRoutes } from "../../modules/route-schemes/route-schemes.routes.js";
 import { telemetryRoutes } from "../../modules/telemetry/telemetry.routes.js";
 import { tempoPermanenciaRoutes } from "../../modules/tempo-permanencia/tempo-permanencia.routes.js";
+import { baseResponsaveisRoutes } from "../../modules/base-responsaveis/base-responsaveis.routes.js";
 
 export function registerRoutes(app: Express) {
   occurrencesRoutes(app);
@@ -26,4 +27,5 @@ export function registerRoutes(app: Express) {
   routeSchemesRoutes(app);
   telemetryRoutes(app);
   tempoPermanenciaRoutes(app);
+  baseResponsaveisRoutes(app);
 }
