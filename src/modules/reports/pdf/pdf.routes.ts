@@ -3,6 +3,7 @@ import { getOccurrencePdfHandler } from "./pdf.route.js";
 import { getGroupOccurrencesPdfHandler } from "./pdf.group.route.js";
 import { getOccurrenceDocxHandler } from "./docx.route.js";
 import { sendOccurrenceToDriveHandler } from "./pdf.drive.route.js";
+import { sendGroupOccurrencesToDriveHandler } from "./pdf.drive.group.route.js";
 import { getSuspensaoPdfHandler, getSuspensaoInfoHandler } from "./suspensao.route.js";
 import { getDailyReportPdfHandler, sendDailyReportToDriveHandler } from "./daily-report.route.js";
 import { getTelemetryReportPdfHandler } from "./telemetry-report.route.js";
@@ -18,6 +19,7 @@ export function reportsPdfRoutes(app: Express) {
   app.get("/reports/occurrences/:id/pdf", getOccurrencePdfHandler);
   app.get("/reports/occurrences/:id/docx", getOccurrenceDocxHandler);
   app.post("/reports/occurrences/:id/drive", sendOccurrenceToDriveHandler);
+  app.post("/reports/occurrences-group/drive", sendGroupOccurrencesToDriveHandler);
   app.post("/reports/occurrences/:id/suspensao-pdf", getSuspensaoPdfHandler);
   app.get("/reports/occurrences/:id/suspensao-info", getSuspensaoInfoHandler);
   app.get("/reports/daily/:date/pdf", getDailyReportPdfHandler);

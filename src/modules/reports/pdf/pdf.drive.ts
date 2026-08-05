@@ -4,22 +4,40 @@ import { Readable } from "stream";
 
 const SCOPES = ["https://www.googleapis.com/auth/drive.file"];
 
+// Aceita tanto client_email/private_key soltos quanto o JSON da service
+// account inteiro em base64 (GOOGLE_SERVICE_ACCOUNT_JSON_B64) — é esse o
+// formato que está de fato configurado no .env deste projeto (mesmo padrão
+// usado em automation/drive/driveScanner.ts). Sem esse fallback, qualquer
+// upload sem token de usuário (service account) falhava sempre.
 function getDriveClient() {
-  const clientEmail = process.env.GOOGLE_DRIVE_CLIENT_EMAIL;
-  const privateKey = process.env.GOOGLE_DRIVE_PRIVATE_KEY?.replace(/\\n/g, "\n");
   const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
-
-  if (!clientEmail) {
-    throw new Error("Variável GOOGLE_DRIVE_CLIENT_EMAIL não configurada no .env");
-  }
-  if (!privateKey) {
-    throw new Error("Variável GOOGLE_DRIVE_PRIVATE_KEY não configurada no .env");
-  }
   if (!folderId) {
     throw new Error(
       "Variável GOOGLE_DRIVE_FOLDER_ID não configurada no .env. " +
       "Service Accounts não têm quota própria — o arquivo precisa ir para uma pasta " +
       "de um Google Drive real, compartilhada com a conta de serviço.",
+    );
+  }
+
+  let clientEmail: string | undefined;
+  let privateKey: string | undefined;
+
+  const rawB64 = process.env.GOOGLE_SERVICE_ACCOUNT_JSON_B64;
+  const raw = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+  if (rawB64 || raw) {
+    const json = rawB64 ? Buffer.from(rawB64, "base64").toString("utf-8") : raw!;
+    const creds = JSON.parse(json);
+    clientEmail = creds.client_email;
+    privateKey = creds.private_key;
+  } else {
+    clientEmail = process.env.GOOGLE_DRIVE_CLIENT_EMAIL;
+    privateKey = process.env.GOOGLE_DRIVE_PRIVATE_KEY?.replace(/\\n/g, "\n");
+  }
+
+  if (!clientEmail || !privateKey) {
+    throw new Error(
+      "Credenciais do Google Drive ausentes: defina GOOGLE_SERVICE_ACCOUNT_JSON_B64 " +
+      "ou GOOGLE_DRIVE_CLIENT_EMAIL + GOOGLE_DRIVE_PRIVATE_KEY no .env",
     );
   }
 

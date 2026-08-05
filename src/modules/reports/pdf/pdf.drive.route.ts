@@ -37,7 +37,7 @@ function abbreviateTitle(title: string): string {
   return `${(words[0] as string).substring(0, 5)}_${(words[1] as string).substring(0, 5)}`;
 }
 
-function buildFileName(o: PdfOccurrence, drivers: PdfDriver[]): string {
+export function buildFileName(o: PdfOccurrence, drivers: PdfDriver[]): string {
   const date = (o.eventDate ?? o.tripDate ?? "").replace(/-/g, ".");
   const vehicle = o.vehicleNumber ?? "";
   const driver = drivers[0]?.name?.split(" ").slice(0, 2).join(" ") ?? "";
