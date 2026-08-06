@@ -36,6 +36,7 @@ export async function getOccurrenceForPdf(
       show_section_tripulacao,
       show_section_passageiros,
       devolutiva_before_evidences,
+      occurrence_points (seq, place, start_time, end_time, permanencia_min, permitido_min, excedente_min),
       occurrence_types:occurrence_types (
         title,
         code
@@ -96,6 +97,17 @@ export async function getOccurrenceForPdf(
     showSectionTripulacao: (data as any).show_section_tripulacao ?? true,
     showSectionPassageiros: (data as any).show_section_passageiros ?? true,
     devolutivaBeforeEvidences: (data as any).devolutiva_before_evidences ?? false,
+    points: ((data as any).occurrence_points ?? [])
+      .slice()
+      .sort((a: any, b: any) => a.seq - b.seq)
+      .map((p: any) => ({
+        place: p.place,
+        startTime: p.start_time,
+        endTime: p.end_time,
+        permanenciaMin: p.permanencia_min ?? null,
+        permitidoMin: p.permitido_min ?? null,
+        excedenteMin: p.excedente_min ?? null,
+      })),
     reportText: "",
   };
 }

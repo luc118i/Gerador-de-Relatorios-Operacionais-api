@@ -45,6 +45,17 @@ export type PdfOccurrence = {
   showSectionTripulacao?: boolean | null;
   showSectionPassageiros?: boolean | null;
   devolutivaBeforeEvidences?: boolean | null;
+
+  // EXCESSO_PERMANENCIA: quando a ocorrência agrupa N pontos de parada (ver
+  // occurrence_points), startTime/endTime/place acima viram um resumo.
+  points?: Array<{
+    place: string;
+    startTime: string;
+    endTime: string;
+    permanenciaMin?: number | null;
+    permitidoMin?: number | null;
+    excedenteMin?: number | null;
+  }>;
 };
 
 export type PdfDriver = {

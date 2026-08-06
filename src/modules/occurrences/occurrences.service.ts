@@ -2,6 +2,7 @@ import {
   getTypeIdByCode,
   insertOccurrence,
   insertDrivers,
+  insertPoints,
   listOccurrencesByDay,
   getBaseCodeFromOccurrenceDriver,
   updateOccurrenceBaseCode,
@@ -15,12 +16,61 @@ import { fetchTripById } from "../trips/trips.repo.js";
 
 import { notifyAppsScript, notifyAppsScriptExcesso } from "../../core/infra/appsScript.service.js";
 
+/** Monta o array de pontos de uma ocorrência EXCESSO_PERMANENCIA: usa
+ * payload.points se vier (grupo — motorista excedeu em N pontos na mesma
+ * viagem), senão cai pro ponto único dos campos de topo (fluxo individual,
+ * comportamento de sempre). */
+function resolvePoints(payload: any) {
+  if (Array.isArray(payload.points) && payload.points.length > 0) {
+    return payload.points as Array<{
+      place: string; startTime: string; endTime: string;
+      cidade?: string; uf?: string; regiao?: string;
+      permanenciaMin?: number; permitidoMin?: number; excedenteMin?: number;
+      lat?: number | null; lng?: number | null;
+    }>;
+  }
+  return [{
+    place: payload.place || "",
+    startTime: payload.startTime,
+    endTime: payload.endTime,
+    cidade: payload.cidade,
+    uf: payload.uf,
+    regiao: payload.regiao,
+    permanenciaMin: payload.permanenciaMin,
+    permitidoMin: payload.permitidoMin,
+    excedenteMin: payload.excedenteMin,
+    lat: payload.lat ?? null,
+    lng: payload.lng ?? null,
+  }];
+}
+
+/** Resume N pontos em start_time/end_time/place pra exibição em listagem:
+ * menor entrada, maior saída, "N paradas" quando há mais de 1 ponto. */
+function summarizePoints(points: Array<{ place: string; startTime: string; endTime: string }>) {
+  if (points.length === 1) {
+    return { startTime: points[0]!.startTime, endTime: points[0]!.endTime, place: points[0]!.place };
+  }
+  const starts = points.map((p) => p.startTime).sort();
+  const ends = points.map((p) => p.endTime).sort();
+  return {
+    startTime: starts[0]!,
+    endTime: ends[ends.length - 1]!,
+    place: `${points.length} paradas`,
+  };
+}
+
 export async function createOccurrence(payload: any) {
   const typeId = await getTypeIdByCode(payload.typeCode);
   const tripulacaoAtiva = payload.showSectionTripulacao !== false;
   const drivers = tripulacaoAtiva ? validateDrivers(payload.drivers) : [];
 
   const driver1 = drivers.find((d) => d.position === 1);
+
+  // EXCESSO_PERMANENCIA: pode vir com N pontos (payload.points) — os campos
+  // start_time/end_time/place gravados na ocorrência viram um resumo.
+  const isExcessoPermanencia = payload.typeCode === "EXCESSO_PERMANENCIA";
+  const points = isExcessoPermanencia ? resolvePoints(payload) : null;
+  const summary = points ? summarizePoints(points) : null;
 
   // baseCode vem do payload OU do driver.base OU "GENERICO" quando sem tripulação
   let baseCode = payload.baseCode?.trim() ?? "";
@@ -44,12 +94,12 @@ export async function createOccurrence(payload: any) {
     event_date: payload.eventDate,
     trip_date: payload.tripDate,
     trip_id: payload.tripId ?? null,
-    start_time: payload.startTime,
-    end_time: payload.endTime,
+    start_time: summary?.startTime ?? payload.startTime,
+    end_time: summary?.endTime ?? payload.endTime,
     vehicle_number: payload.vehicleNumber,
     base_code: baseCode,
     line_label: payload.lineLabel ?? null,
-    place: payload.place ?? "",
+    place: summary?.place ?? payload.place ?? "",
     speed_kmh: payload.speedKmh ?? null,
     trip_time: payload.tripTime || null,
     session_time: payload.sessionTime || null,
@@ -79,6 +129,11 @@ export async function createOccurrence(payload: any) {
   const snapshotBase = await getBaseCodeFromOccurrenceDriver(id);
   if (snapshotBase && snapshotBase !== baseCode) {
     await updateOccurrenceBaseCode(id, snapshotBase);
+  }
+
+  // 4) grava os pontos de parada (1 ou N) da ocorrência EXCESSO_PERMANENCIA
+  if (points) {
+    await insertPoints(id, points);
   }
 
   // Cria ocorrências PARADA_FORA para cada parada proibida detectada na análise operacional
@@ -183,7 +238,9 @@ export async function createOccurrence(payload: any) {
   }
 
   // Notifica planilha (aba HISTORICO_EXCESSO) para excedências de tempo de permanência
-  if (payload.typeCode === "EXCESSO_PERMANENCIA" && driver1) {
+  // — 1 chamada por ponto, preservando o histórico granular por parada mesmo
+  // quando N pontos foram agrupados em 1 única ocorrência.
+  if (isExcessoPermanencia && driver1 && points) {
     const driver1Snapshot = await getDriverSnapshotByOccurrence(id, 1);
     const tripData = (!payload.lineLabel && payload.tripId)
       ? await fetchTripById(payload.tripId)
@@ -198,26 +255,28 @@ export async function createOccurrence(payload: any) {
       return "";
     })();
 
-    await notifyAppsScriptExcesso({
-      chave: `${payload.vehicleNumber}|${payload.eventDate} ${payload.startTime}`,
-      data: payload.eventDate,
-      veiculo: payload.vehicleNumber,
-      linha: linhaStr,
-      ponto: payload.place || "—",
-      cidade: payload.cidade ?? "",
-      uf: payload.uf ?? "",
-      regiao: payload.regiao ?? "",
-      motorista: driver1Snapshot?.name ?? "",
-      motoristaCodigo: driver1Snapshot?.registry ?? driver1.driverId ?? "",
-      entrada: `${payload.eventDate} ${payload.startTime}`,
-      saida: `${payload.eventDate} ${payload.endTime}`,
-      permanenciaMin: payload.permanenciaMin ?? 0,
-      permitidoMin: payload.permitidoMin ?? 0,
-      excedenteMin: payload.excedenteMin ?? 0,
-      occurrenceId: id,
-      lat: payload.lat ?? null,
-      lng: payload.lng ?? null,
-    });
+    for (const point of points) {
+      await notifyAppsScriptExcesso({
+        chave: `${payload.vehicleNumber}|${payload.eventDate} ${point.startTime}`,
+        data: payload.eventDate,
+        veiculo: payload.vehicleNumber,
+        linha: linhaStr,
+        ponto: point.place || "—",
+        cidade: point.cidade ?? "",
+        uf: point.uf ?? "",
+        regiao: point.regiao ?? "",
+        motorista: driver1Snapshot?.name ?? "",
+        motoristaCodigo: driver1Snapshot?.registry ?? driver1.driverId ?? "",
+        entrada: `${payload.eventDate} ${point.startTime}`,
+        saida: `${payload.eventDate} ${point.endTime}`,
+        permanenciaMin: point.permanenciaMin ?? 0,
+        permitidoMin: point.permitidoMin ?? 0,
+        excedenteMin: point.excedenteMin ?? 0,
+        occurrenceId: id,
+        lat: point.lat ?? null,
+        lng: point.lng ?? null,
+      });
+    }
   }
 
   return paradaForaIds.length > 0 ? { id, paradaForaIds } : id;
@@ -275,17 +334,25 @@ export async function updateOccurrence(id: string, payload: any) {
     throw new Error("Não foi possível derivar baseCode do Motorista 01.");
   if (!baseCode) baseCode = "GENERICO";
 
+  // Só reescreve os pontos quando payload.points vem explicitamente — o
+  // formulário de edição atual é single-point e não deve apagar um grupo
+  // multi-ponto criado pelo fluxo em grupo.
+  const points = Array.isArray(payload.points) && payload.points.length > 0
+    ? resolvePoints(payload)
+    : null;
+  const summary = points ? summarizePoints(points) : null;
+
   await updateOccurrenceData(id, {
     type_id: typeId,
     trip_id: payload.tripId ?? null,
     event_date: payload.eventDate,
     trip_date: payload.tripDate,
-    start_time: payload.startTime,
-    end_time: payload.endTime,
+    start_time: summary?.startTime ?? payload.startTime,
+    end_time: summary?.endTime ?? payload.endTime,
     vehicle_number: payload.vehicleNumber,
     base_code: baseCode,
     line_label: payload.lineLabel ?? null,
-    place: payload.place ?? "",
+    place: summary?.place ?? payload.place ?? "",
     speed_kmh: payload.speedKmh ?? null,
     trip_time: payload.tripTime || null,
     session_time: payload.sessionTime || null,
@@ -309,6 +376,10 @@ export async function updateOccurrence(id: string, payload: any) {
   });
 
   await insertDrivers(id, drivers);
+
+  if (points) {
+    await insertPoints(id, points);
+  }
 
   const snapshotBase = await getBaseCodeFromOccurrenceDriver(id);
   if (snapshotBase && snapshotBase !== baseCode) {

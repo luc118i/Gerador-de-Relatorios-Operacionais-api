@@ -392,19 +392,15 @@ function clamp(n: number, min: number, max: number) {
  * meia-noite) e o tempo permitido vem de TEMPO_PERMANENCIA por local (com
  * fallback ao limite padrão para locais sem cadastro).
  */
-async function buildExcessoPermanenciaHtml(
-  occurrence: PdfOccurrence,
-  drivers: PdfDriver[],
-  evidences: ExcessoEvidence[],
-): Promise<string> {
-  const tempoMap = await getTempoPermanenciaMap();
+/** Monta o `Point` (entrada/saída/parada_s, com virada de meia-noite) de UM
+ * ponto de parada — usado tanto pro ponto único de uma ocorrência quanto,
+ * em loop, pelos N pontos de um grupo (occurrence_points). */
+function buildPoint(seq: number, eventDate: string, place: string, startTime: string, endTime: string): Point {
+  const start = (startTime ?? "").slice(0, 5);
+  const end = (endTime ?? "").slice(0, 5);
 
-  const eventDate = occurrence.eventDate;
-  const startTime = (occurrence.startTime ?? "").slice(0, 5);
-  const endTime = (occurrence.endTime ?? "").slice(0, 5);
-
-  const [hi, mi] = startTime.split(":").map(Number) as [number, number];
-  const [hf, mf] = endTime.split(":").map(Number) as [number, number];
+  const [hi, mi] = start.split(":").map(Number) as [number, number];
+  const [hf, mf] = end.split(":").map(Number) as [number, number];
 
   // Parada que cruza a meia-noite: saída no dia seguinte
   let saidaDate = eventDate;
@@ -420,25 +416,35 @@ async function buildExcessoPermanenciaHtml(
   let paradaS = (hf * 60 + mf - (hi * 60 + mi)) * 60;
   if (paradaS <= 0) paradaS += 24 * 3600;
 
-  const placeLc = (occurrence.place ?? "").toLowerCase();
-  const rodoviaria = /rodovi[áa]ri/.test(placeLc);
-  const garagem = placeLc.includes("garagem");
+  const placeLc = (place ?? "").toLowerCase();
 
-  const excessos = extractExcessos(
-    [
-      {
-        seq: 1,
-        ponto: occurrence.place ?? "",
-        entrada: `${eventDate} ${startTime}:00`,
-        saida: `${saidaDate} ${endTime}:00`,
-        parada_s: paradaS,
-        rodoviaria,
-        garagem,
-      },
-    ],
-    tempoMap,
-    { fuzzy: true },
-  );
+  return {
+    seq,
+    ponto: place ?? "",
+    entrada: `${eventDate} ${start}:00`,
+    saida: `${saidaDate} ${end}:00`,
+    parada_s: paradaS,
+    rodoviaria: /rodovi[áa]ri/.test(placeLc),
+    garagem: placeLc.includes("garagem"),
+  };
+}
+
+async function buildExcessoPermanenciaHtml(
+  occurrence: PdfOccurrence,
+  drivers: PdfDriver[],
+  evidences: ExcessoEvidence[],
+): Promise<string> {
+  const tempoMap = await getTempoPermanenciaMap();
+
+  const eventDate = occurrence.eventDate;
+
+  // Ocorrência agrupando N pontos (occurrence_points) vira N Point[]; senão,
+  // cai pro ponto único de sempre (startTime/endTime/place da ocorrência).
+  const pontos: Point[] = occurrence.points && occurrence.points.length > 0
+    ? occurrence.points.map((p, i) => buildPoint(i + 1, eventDate, p.place, p.startTime, p.endTime))
+    : [buildPoint(1, eventDate, occurrence.place ?? "", occurrence.startTime ?? "", occurrence.endTime ?? "")];
+
+  const excessos = extractExcessos(pontos, tempoMap, { fuzzy: true });
 
   const motorista = drivers
     .map((d) => [d.code, d.name || "—", d.baseCode].filter(Boolean).join(" - "))

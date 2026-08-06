@@ -72,6 +72,102 @@ export async function insertDrivers(
   if (insErr) throw insErr;
 }
 
+type OccurrencePointInput = {
+  place: string;
+  startTime: string;
+  endTime: string;
+  cidade?: string;
+  uf?: string;
+  regiao?: string;
+  permanenciaMin?: number;
+  permitidoMin?: number;
+  excedenteMin?: number;
+  lat?: number | null;
+  lng?: number | null;
+};
+
+/** Substitui os pontos de parada de uma ocorrência EXCESSO_PERMANENCIA
+ * (mesmo padrão de insertDrivers: apaga os antigos e insere os novos). */
+export async function insertPoints(
+  occurrenceId: string,
+  points: OccurrencePointInput[],
+) {
+  const { error: delErr } = await supabaseAdmin
+    .from("occurrence_points")
+    .delete()
+    .eq("occurrence_id", occurrenceId);
+
+  if (delErr) throw delErr;
+
+  if (points.length === 0) return;
+
+  const { error: insErr } = await supabaseAdmin
+    .from("occurrence_points")
+    .insert(
+      points.map((p, i) => ({
+        occurrence_id: occurrenceId,
+        seq: i + 1,
+        place: p.place,
+        start_time: p.startTime,
+        end_time: p.endTime,
+        cidade: p.cidade ?? null,
+        uf: p.uf ?? null,
+        regiao: p.regiao ?? null,
+        permanencia_min: p.permanenciaMin ?? null,
+        permitido_min: p.permitidoMin ?? null,
+        excedente_min: p.excedenteMin ?? null,
+        lat: p.lat ?? null,
+        lng: p.lng ?? null,
+      })),
+    );
+
+  if (insErr) throw insErr;
+}
+
+export async function listPointsByOccurrence(occurrenceId: string) {
+  const { data, error } = await supabaseAdmin
+    .from("occurrence_points")
+    .select("place, start_time, end_time, cidade, uf, regiao, permanencia_min, permitido_min, excedente_min, lat, lng")
+    .eq("occurrence_id", occurrenceId)
+    .order("seq", { ascending: true });
+
+  if (error) throw error;
+
+  return (data ?? []).map((p: any) => ({
+    place: p.place,
+    startTime: p.start_time,
+    endTime: p.end_time,
+    cidade: p.cidade ?? null,
+    uf: p.uf ?? null,
+    regiao: p.regiao ?? null,
+    permanenciaMin: p.permanencia_min ?? null,
+    permitidoMin: p.permitido_min ?? null,
+    excedenteMin: p.excedente_min ?? null,
+    lat: p.lat ?? null,
+    lng: p.lng ?? null,
+  }));
+}
+
+function mapPointRows(rows: any): Array<{
+  place: string;
+  startTime: string;
+  endTime: string;
+  permanenciaMin: number | null;
+  permitidoMin: number | null;
+  excedenteMin: number | null;
+}> {
+  return (Array.isArray(rows) ? rows : [])
+    .sort((a: any, b: any) => a.seq - b.seq)
+    .map((p: any) => ({
+      place: p.place,
+      startTime: p.start_time,
+      endTime: p.end_time,
+      permanenciaMin: p.permanencia_min ?? null,
+      permitidoMin: p.permitido_min ?? null,
+      excedenteMin: p.excedente_min ?? null,
+    }));
+}
+
 /** listar por dia com drivers + evidences (count) + type */
 export async function listOccurrencesByDay(date: string) {
   const startUTC = new Date(`${date}T00:00:00`).toISOString(); // Converte para UTC
@@ -120,6 +216,7 @@ export async function listOccurrencesByDay(date: string) {
       occurrence_types:occurrence_types (code, title),
       occurrence_drivers (position, driver_id, registry, name, base_code),
       occurrence_evidences (id),
+      occurrence_points (seq, place, start_time, end_time, permanencia_min, permitido_min, excedente_min),
       suspensoes (data_inicio, dias)
     `,
     )
@@ -175,6 +272,7 @@ export async function listOccurrencesByDay(date: string) {
         baseCode: d.base_code,
       })),
     evidenceCount: (o.occurrence_evidences ?? []).length,
+    points: mapPointRows(o.occurrence_points),
     suspensao: (() => {
       const arr = Array.isArray(o.suspensoes) ? o.suspensoes : [];
       const s = arr[0] ?? null;
@@ -267,6 +365,7 @@ export async function getOccurrenceById(id: string) {
       occurrence_types:occurrence_types (code, title),
       occurrence_drivers (position, driver_id, registry, name, base_code),
       occurrence_evidences (id, storage_path, caption, link_texto, link_url, sort_order),
+      occurrence_points (seq, place, start_time, end_time, permanencia_min, permitido_min, excedente_min),
       suspensoes (data_inicio, dias)
     `,
     )
@@ -334,6 +433,7 @@ export async function getOccurrenceById(id: string) {
         baseCode: d.base_code,
       })),
     evidenceCount: (o.occurrence_evidences ?? []).length,
+    points: mapPointRows(o.occurrence_points),
     // evidências completas
     evidences: (o.occurrence_evidences ?? [])
       .sort((a: any, b: any) => a.sort_order - b.sort_order)

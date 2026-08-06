@@ -78,6 +78,30 @@ export const createOccurrenceSchema = z.object({
   excedenteMin: z.number().optional(),
   lat: z.number().nullable().optional(),
   lng: z.number().nullable().optional(),
+
+  // Vários pontos de parada dentro de UMA ocorrência EXCESSO_PERMANENCIA
+  // (ex.: motorista excede em mais de um ponto na mesma viagem) — evita
+  // criar N ocorrências/N envios ao RIZER pro mesmo motorista/dia. Quando
+  // ausente, o backend monta um array de 1 ponto a partir dos campos acima
+  // (comportamento de sempre, inclusive pro fluxo individual).
+  points: z
+    .array(
+      z.object({
+        place: z.string().trim().min(1),
+        startTime: z.string().regex(/^\d{2}:\d{2}$/, "startTime deve ser HH:mm"),
+        endTime: z.string().regex(/^\d{2}:\d{2}$/, "endTime deve ser HH:mm"),
+        cidade: z.string().optional(),
+        uf: z.string().optional(),
+        regiao: z.string().optional(),
+        permanenciaMin: z.number().optional(),
+        permitidoMin: z.number().optional(),
+        excedenteMin: z.number().optional(),
+        lat: z.number().nullable().optional(),
+        lng: z.number().nullable().optional(),
+      }),
+    )
+    .min(1)
+    .optional(),
 }).superRefine((data, ctx) => {
   const tripulacaoAtiva = data.showSectionTripulacao !== false;
   if (!tripulacaoAtiva) return; // seção desabilitada — sem validação de motoristas
