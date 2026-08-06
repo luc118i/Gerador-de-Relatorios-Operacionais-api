@@ -103,8 +103,11 @@ export async function sendOccurrenceToDriveHandler(
         : await uploadPdfToDriveWithToken({ pdfBuffer, fileName, folderId: folderIdFromBody, accessToken })
       : await uploadPdfToDrive({ pdfBuffer, fileName });
 
-    // 5. Persiste o nome do arquivo no banco
-    await saveRizerData(occurrenceId, { driveFileNome: driveResult.fileName });
+    // 5. Persiste o nome do arquivo e o link do Drive no banco
+    await saveRizerData(occurrenceId, {
+      driveFileNome: driveResult.fileName,
+      driveWebViewLink: driveResult.webViewLink,
+    });
 
     return res.status(200).json({
       data: {

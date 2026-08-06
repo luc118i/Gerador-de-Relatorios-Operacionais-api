@@ -347,6 +347,7 @@ export async function getOccurrenceById(id: string) {
     rizerRegistered: o.rizer_registered ?? false,
     rizerId: o.rizer_id ?? null,
     driveFileNome: o.drive_file_nome ?? null,
+    driveWebViewLink: o.drive_web_view_link ?? null,
     advertencia: o.advertencia ?? true,
     suspensaoDisciplinar: o.suspensao ?? false,
     faltaTratativa: o.falta_tratativa ?? false,
@@ -371,10 +372,12 @@ export async function markRizerRegistered(id: string): Promise<void> {
 export async function saveRizerData(id: string, data: {
   rizerId?: string | null
   driveFileNome?: string | null
+  driveWebViewLink?: string | null
 }): Promise<void> {
   const update: Record<string, unknown> = {}
-  if (data.rizerId !== undefined)      update.rizer_id        = data.rizerId
-  if (data.driveFileNome !== undefined) update.drive_file_nome = data.driveFileNome
+  if (data.rizerId !== undefined)          update.rizer_id             = data.rizerId
+  if (data.driveFileNome !== undefined)    update.drive_file_nome      = data.driveFileNome
+  if (data.driveWebViewLink !== undefined) update.drive_web_view_link  = data.driveWebViewLink
 
   if (Object.keys(update).length === 0) return
 

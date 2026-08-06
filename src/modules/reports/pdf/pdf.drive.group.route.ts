@@ -83,11 +83,15 @@ export async function sendGroupOccurrencesToDriveHandler(
         : await uploadPdfToDriveWithToken({ pdfBuffer, fileName, folderId: folderIdFromBody, accessToken })
       : await uploadPdfToDrive({ pdfBuffer, fileName });
 
-    // 5. Persiste o nome do arquivo em TODAS as ocorrências do grupo — o
-    //    mesmo PDF cobre todas, então todas apontam pro mesmo arquivo.
+    // 5. Persiste o nome do arquivo e o link do Drive em TODAS as
+    //    ocorrências do grupo — o mesmo PDF cobre todas, então todas
+    //    apontam pro mesmo arquivo.
     await Promise.all(
       occurrenceIds.map((id) =>
-        saveRizerData(id, { driveFileNome: driveResult.fileName }),
+        saveRizerData(id, {
+          driveFileNome: driveResult.fileName,
+          driveWebViewLink: driveResult.webViewLink,
+        }),
       ),
     );
 
