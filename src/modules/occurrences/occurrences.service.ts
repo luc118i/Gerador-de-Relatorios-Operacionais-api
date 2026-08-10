@@ -120,6 +120,7 @@ export async function createOccurrence(payload: any) {
     devolutiva_before_evidences: payload.devolutivaBeforeEvidences ?? false,
     tratativa: payload.tratativa ?? null,
     analisado_por: payload.analisadoPor ?? null,
+    analisado_por_user_id: payload.analisadoPorUserId ?? null,
   });
 
   // 2) cria vínculos (trigger preenche snapshot)
@@ -376,6 +377,7 @@ export async function updateOccurrence(id: string, payload: any) {
     devolutiva_before_evidences: payload.devolutivaBeforeEvidences ?? false,
     tratativa: payload.tratativa ?? null,
     analisado_por: payload.analisadoPor ?? null,
+    analisado_por_user_id: payload.analisadoPorUserId ?? null,
   });
 
   await insertDrivers(id, drivers);

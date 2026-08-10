@@ -61,6 +61,11 @@ export const createOccurrenceSchema = z.object({
 
   tratativa: z.enum(["SUSPEICAO", "ADVERTENCIA", "VALE", "REGISTRO"]).optional().nullable(),
   analisadoPor: z.string().trim().optional().nullable(),
+  // Vínculo best-effort com o usuário logado no app quando `analisadoPor` foi
+  // definido por ele (não validado por JWT — ver migração
+  // add_analisado_por_user_id_to_occurrences.sql). Ausente em ocorrências
+  // importadas via GAS.
+  analisadoPorUserId: z.string().uuid().optional().nullable(),
 
   // Campos gerados pela análise operacional (ANALISE_OP)
   paradasProibidas: z
