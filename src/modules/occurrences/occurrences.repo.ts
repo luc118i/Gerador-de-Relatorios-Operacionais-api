@@ -115,6 +115,7 @@ export async function listOccurrencesByDay(date: string) {
       falta_tratativa,
       tratativa,
       analisado_por,
+      analisado_por_user_id,
       justificativa_registro,
       created_at,
       occurrence_types:occurrence_types (code, title),
@@ -186,6 +187,7 @@ export async function listOccurrencesByDay(date: string) {
     faltaTratativa: o.falta_tratativa ?? false,
     tratativa: o.tratativa ?? null,
     analisadoPor: o.analisado_por ?? null,
+    analisadoPorUserId: o.analisado_por_user_id ?? null,
     justificativaRegistro: o.justificativa_registro ?? null,
   }));
 }
@@ -264,6 +266,7 @@ export async function getOccurrenceById(id: string) {
       falta_tratativa,
       tratativa,
       analisado_por,
+      analisado_por_user_id,
       occurrence_types:occurrence_types (code, title),
       occurrence_drivers (position, driver_id, registry, name, base_code),
       occurrence_evidences (id, storage_path, caption, link_texto, link_url, sort_order),
@@ -353,6 +356,7 @@ export async function getOccurrenceById(id: string) {
     faltaTratativa: o.falta_tratativa ?? false,
     tratativa: o.tratativa ?? null,
     analisadoPor: o.analisado_por ?? null,
+    analisadoPorUserId: o.analisado_por_user_id ?? null,
     suspensao: (() => {
       const arr = Array.isArray(o.suspensoes) ? o.suspensoes : []
       const s = arr[0] ?? null
@@ -482,6 +486,7 @@ export async function updateOccurrenceData(id: string, data: any) {
       devolutiva_before_evidences: data.devolutiva_before_evidences ?? false,
       tratativa: data.tratativa ?? null,
       analisado_por: data.analisado_por ?? null,
+      analisado_por_user_id: data.analisado_por_user_id ?? null,
       pdf_url: null,
       pdf_expires_at: null,
     })
@@ -569,14 +574,22 @@ export async function updateTratativa(
   tratativa: string | null,
   analisadoPor: string | null,
   justificativaRegistro?: string | null,
+  // `undefined` = chamador não sabe desse campo, não mexe no que já está
+  // gravado; `null` explícito = limpa o vínculo de propósito.
+  analisadoPorUserId?: string | null,
 ): Promise<void> {
+  const update: Record<string, unknown> = {
+    tratativa: tratativa ?? null,
+    analisado_por: analisadoPor ?? null,
+    justificativa_registro: justificativaRegistro ?? null,
+  };
+  if (analisadoPorUserId !== undefined) {
+    update.analisado_por_user_id = analisadoPorUserId;
+  }
+
   const { error } = await supabaseAdmin
     .from("occurrences")
-    .update({
-      tratativa: tratativa ?? null,
-      analisado_por: analisadoPor ?? null,
-      justificativa_registro: justificativaRegistro ?? null,
-    })
+    .update(update)
     .eq("id", id);
   if (error) throw error;
 }

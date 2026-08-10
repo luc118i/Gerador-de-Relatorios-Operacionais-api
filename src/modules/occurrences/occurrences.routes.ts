@@ -78,16 +78,25 @@ export function occurrencesRoutes(app: Express) {
   app.patch("/occurrences/:id/tratativa", async (req, res, next) => {
     try {
       const { id } = req.params;
-      const { tratativa, analisadoPor, justificativaRegistro } = req.body as {
+      const { tratativa, analisadoPor, analisadoPorUserId, justificativaRegistro } = req.body as {
         tratativa?: string | null;
         analisadoPor?: string | null;
+        analisadoPorUserId?: string | null;
         justificativaRegistro?: string | null;
       };
       const VALID = ["SUSPEICAO", "ADVERTENCIA", "VALE", "REGISTRO", null, undefined];
       if (!VALID.includes(tratativa as any)) {
         return res.status(400).json({ error: "tratativa inválida" });
       }
-      await updateTratativa(id, tratativa ?? null, analisadoPor ?? null, justificativaRegistro ?? null);
+      await updateTratativa(
+        id,
+        tratativa ?? null,
+        analisadoPor ?? null,
+        justificativaRegistro ?? null,
+        // Preserva undefined quando a chave nem veio no body (clientes
+        // antigos, sem essa feature) — ver comentário em updateTratativa.
+        analisadoPorUserId,
+      );
       res.json({ ok: true });
     } catch (err) {
       next(err);
