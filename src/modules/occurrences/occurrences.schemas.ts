@@ -27,6 +27,7 @@ export const createOccurrenceSchema = z.object({
   sessionTime: z.string().nullable().optional().transform((v) => v || null), // horário de sessão previsto no ponto (HH:mm), vindo do esquema operacional
 
   lineLabel: z.string().nullable().optional(), // opcional (se quiser)
+  tripSentido: z.string().nullable().optional(), // IDA/VOLTA — sobrepõe o direction da viagem canônica, se enviado
   occurrenceName: z.string().optional().nullable(), // nome exato no RIZER
 
   // Campos do tipo GENERICO (CCO)

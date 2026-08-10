@@ -186,7 +186,10 @@ export async function createOccurrence(payload: any) {
         ? String(localIdNum)
         : "0"; // fallback: Apps Script valida campo não-vazio; 0 sinaliza "local não mapeado"
     const driverBase = driver1.driverId ? await getDriverBaseById(driver1.driverId) : undefined;
-    const tripData = (!payload.lineLabel && payload.tripId)
+    // Busca a viagem canônica sempre que houver tripId, mesmo com lineLabel
+    // preenchido — é dela que vem o sentido (IDA/VOLTA), que o front não
+    // costuma mandar junto do lineLabel.
+    const tripData = payload.tripId
       ? await fetchTripById(payload.tripId)
       : null;
     const linhaStr = (() => {
@@ -399,7 +402,10 @@ export async function updateOccurrence(id: string, payload: any) {
         ? String(localIdNum)
         : "0"; // fallback: Apps Script valida campo não-vazio; 0 sinaliza "local não mapeado"
     const driverBase = driver1.driverId ? await getDriverBaseById(driver1.driverId) : undefined;
-    const tripData = (!payload.lineLabel && payload.tripId)
+    // Busca a viagem canônica sempre que houver tripId, mesmo com lineLabel
+    // preenchido — é dela que vem o sentido (IDA/VOLTA), que o front não
+    // costuma mandar junto do lineLabel.
+    const tripData = payload.tripId
       ? await fetchTripById(payload.tripId)
       : null;
     const linhaStr = (() => {
