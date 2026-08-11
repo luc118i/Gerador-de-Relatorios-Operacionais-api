@@ -669,6 +669,15 @@ export async function deleteOccurrence(id: string) {
   if (error) throw error;
 }
 
+// Mapeia o valor legado de `tratativa` pro enum medida_tipo de
+// occurrence_measures (ver migration do módulo disciplinary).
+const TRATATIVA_TO_MEDIDA: Record<string, string> = {
+  SUSPEICAO: "SUSPENSAO",
+  ADVERTENCIA: "ADVERTENCIA",
+  VALE: "VALE",
+  REGISTRO: "REGISTRO",
+};
+
 export async function updateTratativa(
   id: string,
   tratativa: string | null,
@@ -678,18 +687,60 @@ export async function updateTratativa(
   // gravado; `null` explícito = limpa o vínculo de propósito.
   analisadoPorUserId?: string | null,
 ): Promise<void> {
-  const update: Record<string, unknown> = {
-    tratativa: tratativa ?? null,
+  const metaUpdate: Record<string, unknown> = {
     analisado_por: analisadoPor ?? null,
     justificativa_registro: justificativaRegistro ?? null,
   };
   if (analisadoPorUserId !== undefined) {
-    update.analisado_por_user_id = analisadoPorUserId;
+    metaUpdate.analisado_por_user_id = analisadoPorUserId;
   }
 
+  if (tratativa === null) {
+    // Limpar tratativa não é uma "medida" a registrar — occurrence_measures
+    // é append-only (histórico), então isso continua sendo update direto.
+    const { error } = await supabaseAdmin
+      .from("occurrences")
+      .update({ tratativa: null, ...metaUpdate })
+      .eq("id", id);
+    if (error) throw error;
+    return;
+  }
+
+  const tipo = TRATATIVA_TO_MEDIDA[tratativa];
+  if (!tipo) throw new Error(`tratativa desconhecida: ${tratativa}`);
+
+  // Motoristas vinculados a essa ocorrência (1 ou 2, ver OccurrenceDriverDTO.position).
+  const { data: linked, error: linkedError } = await supabaseAdmin
+    .from("occurrence_drivers")
+    .select("driver_id")
+    .eq("occurrence_id", id);
+  if (linkedError) throw linkedError;
+
+  if (linked && linked.length > 0) {
+    // Fonte única de verdade agora é occurrence_measures — o trigger
+    // trg_sync_tratativa reflete em occurrences.tratativa automaticamente.
+    const rows = linked.map((d) => ({
+      occurrence_id: id,
+      driver_id: d.driver_id,
+      tipo,
+      responsavel: analisadoPor?.trim() || "sistema",
+      observacao: justificativaRegistro ?? null,
+    }));
+    const { error: insertError } = await supabaseAdmin
+      .from("occurrence_measures")
+      .insert(rows);
+    if (insertError) throw insertError;
+  } else {
+    // Sem motorista vinculado (não deveria acontecer) — sem driver_id não dá
+    // pra gravar em occurrence_measures (coluna NOT NULL), cai no update direto.
+    metaUpdate.tratativa = tratativa;
+  }
+
+  // Campos que o trigger não cobre (analisado_por/justificativa/user_id), e
+  // cobre o fallback acima quando não havia driver vinculado.
   const { error } = await supabaseAdmin
     .from("occurrences")
-    .update(update)
+    .update(metaUpdate)
     .eq("id", id);
   if (error) throw error;
 }
