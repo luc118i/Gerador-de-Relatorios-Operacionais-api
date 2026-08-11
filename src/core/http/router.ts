@@ -13,10 +13,12 @@ import { routeSchemesRoutes } from "../../modules/route-schemes/route-schemes.ro
 import { telemetryRoutes } from "../../modules/telemetry/telemetry.routes.js";
 import { tempoPermanenciaRoutes } from "../../modules/tempo-permanencia/tempo-permanencia.routes.js";
 import { baseResponsaveisRoutes } from "../../modules/base-responsaveis/base-responsaveis.routes.js";
+import { disciplinaryRoutes } from "../../modules/disciplinary/disciplinary.routes.js";
 
 export function registerRoutes(app: Express) {
   occurrencesRoutes(app);
   driversRoutes(app);
+  disciplinaryRoutes(app);
   tripsRoutes(app);
   reportsRoutes(app);
   evidencesRoutes(app);
