@@ -10,6 +10,7 @@ import {
 import {
   deleteOccurrence,
   getOccurrenceById,
+  incrementWhatsappSent,
   listReportTitles,
   updateTratativa,
 } from "./occurrences.repo.js";
@@ -98,6 +99,23 @@ export function occurrencesRoutes(app: Express) {
         analisadoPorUserId,
       );
       res.json({ ok: true });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // Registra que a notificação via WhatsApp foi enviada (incrementa o
+  // contador) — chamado pelo frontend depois de whatsappAgentApi.send() dar
+  // certo, não antes (não conta tentativa falha).
+  app.post("/occurrences/:id/whatsapp-sent", async (req, res, next) => {
+    try {
+      const { id } = req.params;
+      const position = Number(req.body?.driverPosition);
+      if (position !== 1 && position !== 2) {
+        return res.status(400).json({ error: "driverPosition deve ser 1 ou 2" });
+      }
+      const result = await incrementWhatsappSent(id, position);
+      res.json({ data: result });
     } catch (err) {
       next(err);
     }

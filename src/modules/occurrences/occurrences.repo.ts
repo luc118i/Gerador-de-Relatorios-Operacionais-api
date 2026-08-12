@@ -213,6 +213,10 @@ export async function listOccurrencesByDay(date: string) {
       analisado_por,
       analisado_por_user_id,
       justificativa_registro,
+      whatsapp_sent_count_1,
+      whatsapp_last_sent_1_at,
+      whatsapp_sent_count_2,
+      whatsapp_last_sent_2_at,
       created_at,
       occurrence_types:occurrence_types (code, title),
       occurrence_drivers (position, driver_id, registry, name, base_code),
@@ -287,6 +291,10 @@ export async function listOccurrencesByDay(date: string) {
     analisadoPor: o.analisado_por ?? null,
     analisadoPorUserId: o.analisado_por_user_id ?? null,
     justificativaRegistro: o.justificativa_registro ?? null,
+    whatsappSentCountD1: o.whatsapp_sent_count_1 ?? 0,
+    whatsappLastSentD1At: o.whatsapp_last_sent_1_at ?? null,
+    whatsappSentCountD2: o.whatsapp_sent_count_2 ?? 0,
+    whatsappLastSentD2At: o.whatsapp_last_sent_2_at ?? null,
   }));
 }
 
@@ -365,6 +373,10 @@ export async function getOccurrenceById(id: string) {
       tratativa,
       analisado_por,
       analisado_por_user_id,
+      whatsapp_sent_count_1,
+      whatsapp_last_sent_1_at,
+      whatsapp_sent_count_2,
+      whatsapp_last_sent_2_at,
       occurrence_types:occurrence_types (code, title),
       occurrence_drivers (position, driver_id, registry, name, base_code),
       occurrence_evidences (id, storage_path, caption, link_texto, link_url, sort_order),
@@ -457,12 +469,34 @@ export async function getOccurrenceById(id: string) {
     tratativa: o.tratativa ?? null,
     analisadoPor: o.analisado_por ?? null,
     analisadoPorUserId: o.analisado_por_user_id ?? null,
+    whatsappSentCountD1: o.whatsapp_sent_count_1 ?? 0,
+    whatsappLastSentD1At: o.whatsapp_last_sent_1_at ?? null,
+    whatsappSentCountD2: o.whatsapp_sent_count_2 ?? 0,
+    whatsappLastSentD2At: o.whatsapp_last_sent_2_at ?? null,
     suspensao: (() => {
       const arr = Array.isArray(o.suspensoes) ? o.suspensoes : []
       const s = arr[0] ?? null
       return s ? { dataInicio: s.data_inicio as string, dias: s.dias as number } : null
     })(),
   };
+}
+
+// Contador de envios de notificação via WhatsApp por motorista (posição 1
+// ou 2) — usado pelo botão de WhatsApp na Home/preview pra virar um
+// contador em vez de resetar a cada envio. Incremento atômico via função
+// no banco (increment_whatsapp_sent, ver migration add_whatsapp_sent_tracking.sql).
+export async function incrementWhatsappSent(
+  occurrenceId: string,
+  position: 1 | 2,
+): Promise<{ count: number; lastSentAt: string }> {
+  const { data, error } = await supabaseAdmin.rpc("increment_whatsapp_sent", {
+    p_occurrence_id: occurrenceId,
+    p_position: position,
+  });
+  if (error) throw error;
+
+  const row = Array.isArray(data) ? data[0] : data;
+  return { count: row.count as number, lastSentAt: row.last_sent_at as string };
 }
 
 export async function markRizerRegistered(id: string): Promise<void> {
