@@ -14,6 +14,7 @@ export const createDriverSchema = z.object({
   code: z.string().min(1),
   name: z.string().min(1),
   base: z.string().optional().nullable(),
+  phone: z.string().optional().nullable(),
 });
 
 // mantém assim, mas vamos tipar na rota
@@ -22,6 +23,7 @@ export const updateDriverSchema = z
     code: z.string().min(1).optional(),
     name: z.string().min(1).optional(),
     base: z.string().optional().nullable(),
+    phone: z.string().optional().nullable(),
   })
   .refine((data) => Object.keys(data).length > 0, {
     message: "Pelo menos um campo deve ser enviado para atualização.",

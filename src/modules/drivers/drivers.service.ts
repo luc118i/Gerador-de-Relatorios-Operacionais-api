@@ -1,6 +1,7 @@
 import {
   insertDriver,
   lookupDriverByCode,
+  getDriverById,
   searchDrivers,
   updateDriverRepo,
   deleteDriverRepo,
@@ -16,7 +17,13 @@ const MESES = [
 export async function lookupDriver(code: string) {
   const row = await lookupDriverByCode(code);
   if (!row) return null;
-  return { id: row.id, code: row.code, name: row.name, base: row.base };
+  return { id: row.id, code: row.code, name: row.name, base: row.base, phone: row.phone };
+}
+
+export async function getDriver(id: string) {
+  const row = await getDriverById(id);
+  if (!row) return null;
+  return { id: row.id, code: row.code, name: row.name, base: row.base, phone: row.phone };
 }
 
 export async function listDrivers(args: {
@@ -31,6 +38,7 @@ export async function listDrivers(args: {
     code: d.code,
     name: d.name,
     base: d.base,
+    phone: d.phone,
     active: d.active,
   }));
 }
@@ -39,17 +47,20 @@ type InsertDriverArgs = {
   code: string;
   name: string;
   base: string | null; // base SEMPRE presente
+  phone?: string | null;
 };
 
 export async function createDriver(payload: {
   code: string;
   name: string;
   base?: string | null;
+  phone?: string | null;
 }) {
   const args: InsertDriverArgs = {
     code: payload.code,
     name: payload.name,
     base: payload.base ?? null,
+    phone: payload.phone ?? null,
   };
 
   const row = await insertDriver(args);
@@ -58,6 +69,7 @@ export async function createDriver(payload: {
     code: row.code,
     name: row.name,
     base: row.base,
+    phone: row.phone,
   };
 }
 
@@ -67,6 +79,7 @@ export async function updateDriver(
     code?: string;
     name?: string;
     base?: string | null;
+    phone?: string | null;
   },
 ) {
   const args: {
@@ -74,6 +87,7 @@ export async function updateDriver(
     code?: string;
     name?: string;
     base?: string | null;
+    phone?: string | null;
   } = { id };
 
   if (payload.code !== undefined) {
@@ -84,6 +98,9 @@ export async function updateDriver(
   }
   if (payload.base !== undefined) {
     args.base = payload.base ?? null;
+  }
+  if (payload.phone !== undefined) {
+    args.phone = payload.phone ?? null;
   }
 
   const updated = await updateDriverRepo(args);
@@ -120,11 +137,13 @@ export async function upsertDriver(payload: {
   code: string;
   name: string;
   base?: string | null;
+  phone?: string | null;
 }) {
   const row = await upsertDriverRepo({
     code: payload.code,
     name: payload.name,
     base: payload.base ?? null,
+    phone: payload.phone ?? null,
   });
-  return { id: row.id, code: row.code, name: row.name, base: row.base };
+  return { id: row.id, code: row.code, name: row.name, base: row.base, phone: row.phone };
 }

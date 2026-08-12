@@ -10,6 +10,7 @@ import {
   createDriver,
   listDrivers,
   lookupDriver,
+  getDriver,
   updateDriver,
   deleteDriver,
   upsertDriver,
@@ -50,6 +51,7 @@ export function driversRoutes(app: Express) {
         code: payloadRaw.code,
         name: payloadRaw.name,
         ...(payloadRaw.base !== undefined ? { base: payloadRaw.base } : {}),
+        ...(payloadRaw.phone !== undefined ? { phone: payloadRaw.phone } : {}),
       };
       const created = await createDriver(payload);
       res.status(201).json(created);
@@ -67,8 +69,21 @@ export function driversRoutes(app: Express) {
         code: payloadRaw.code,
         name: payloadRaw.name,
         base: payloadRaw.base ?? null,
+        phone: payloadRaw.phone ?? null,
       });
       res.status(200).json(driver);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // Ficha completa do motorista (inclui telefone, usado pelo botão de WhatsApp).
+  app.get("/drivers/:id", async (req, res, next) => {
+    try {
+      const { id } = req.params;
+      const driver = await getDriver(id);
+      if (!driver) return res.status(404).json({ message: "Driver not found" });
+      return res.json({ data: driver });
     } catch (err) {
       next(err);
     }
@@ -96,6 +111,7 @@ export function driversRoutes(app: Express) {
         code?: string;
         name?: string;
         base?: string | null;
+        phone?: string | null;
       } = {};
 
       if (parsed.code !== undefined) {
@@ -106,6 +122,9 @@ export function driversRoutes(app: Express) {
       }
       if (parsed.base !== undefined) {
         payload.base = parsed.base ?? null;
+      }
+      if (parsed.phone !== undefined) {
+        payload.phone = parsed.phone ?? null;
       }
 
       const updated = await updateDriver(id, payload);

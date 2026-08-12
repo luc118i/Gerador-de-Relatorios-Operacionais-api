@@ -12,7 +12,7 @@ export async function searchDrivers(args: {
 
   let q = supabaseAdmin
     .from("drivers")
-    .select("id, code, name, base, active, created_at")
+    .select("id, code, name, base, phone, active, created_at")
     .eq("active", active)
     .order("name", { ascending: true })
     .limit(limit);
@@ -31,30 +31,31 @@ export async function searchDrivers(args: {
 export async function lookupDriverByCode(code: string) {
   const { data, error } = await supabaseAdmin
     .from("drivers")
-    .select("id, code, name, base")
+    .select("id, code, name, base, phone")
     .eq("code", code.trim())
     .eq("active", true)
     .maybeSingle();
 
   if (error) throw error;
-  return data as { id: string; code: string; name: string; base: string | null } | null;
+  return data as { id: string; code: string; name: string; base: string | null; phone: string | null } | null;
 }
 
 export async function getDriverById(id: string) {
   const { data, error } = await supabaseAdmin
     .from("drivers")
-    .select("id, code, name, base")
+    .select("id, code, name, base, phone")
     .eq("id", id)
     .maybeSingle();
 
   if (error) throw error;
-  return data as { id: string; code: string; name: string; base: string | null } | null;
+  return data as { id: string; code: string; name: string; base: string | null; phone: string | null } | null;
 }
 
 export async function insertDriver(args: {
   code: string;
   name: string;
   base: string | null;
+  phone?: string | null;
 }) {
   const { data, error } = await supabaseAdmin
     .from("drivers")
@@ -62,13 +63,14 @@ export async function insertDriver(args: {
       code: args.code.trim(),
       name: args.name.trim(),
       base: args.base?.trim() || null,
+      phone: args.phone?.trim() || null,
       active: true,
     })
-    .select("id, code, name, base, active")
+    .select("id, code, name, base, phone, active")
     .single();
 
   if (error) throw error;
-  return data as { id: string; code: string; name: string; base: string | null; active: boolean };
+  return data as { id: string; code: string; name: string; base: string | null; phone: string | null; active: boolean };
 }
 
 export async function updateDriverRepo(args: {
@@ -76,12 +78,14 @@ export async function updateDriverRepo(args: {
   code?: string;
   name?: string;
   base?: string | null;
+  phone?: string | null;
 }) {
   const payload: Record<string, any> = {};
 
   if (args.code !== undefined) payload.code = args.code.trim();
   if (args.name !== undefined) payload.name = args.name.trim();
   if (args.base !== undefined) payload.base = args.base?.trim() || null;
+  if (args.phone !== undefined) payload.phone = args.phone?.trim() || null;
 
   const { data, error } = await supabaseAdmin
     .from("drivers")
@@ -99,18 +103,25 @@ export async function upsertDriverRepo(args: {
   code: string;
   name: string;
   base: string | null;
+  phone?: string | null;
 }) {
   const { data, error } = await supabaseAdmin
     .from("drivers")
     .upsert(
-      { code: args.code.trim(), name: args.name.trim(), base: args.base?.trim() || null, active: true },
+      {
+        code: args.code.trim(),
+        name: args.name.trim(),
+        base: args.base?.trim() || null,
+        ...(args.phone !== undefined ? { phone: args.phone?.trim() || null } : {}),
+        active: true,
+      },
       { onConflict: "code" },
     )
-    .select("id, code, name, base")
+    .select("id, code, name, base, phone")
     .single();
 
   if (error) throw error;
-  return data as { id: string; code: string; name: string; base: string | null };
+  return data as { id: string; code: string; name: string; base: string | null; phone: string | null };
 }
 
 export async function deleteDriverRepo(id: string) {

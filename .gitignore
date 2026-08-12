@@ -73,3 +73,7 @@ screenshots/
 *.sqlite
 *.db
 test-sample.csv
+
+# Dados reais de importação (PII — telefones/nomes de motoristas), nunca
+# devem ir pro histórico do repo. Ver scripts/import-driver-phones.ts.
+scripts/data/
