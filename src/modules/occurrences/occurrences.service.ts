@@ -16,6 +16,18 @@ import { fetchTripById } from "../trips/trips.repo.js";
 
 import { notifyAppsScript, notifyAppsScriptExcesso } from "../../core/infra/appsScript.service.js";
 
+/** Nome que vai pro RIZER. Para GENERICO, deriva sempre de reportTitle no
+ * servidor — nunca confia no occurrenceName que o client manda solto, porque
+ * os dois podem desincronizar (ex.: reportTitle editado por um caminho que
+ * não atualiza occurrenceName junto), deixando o RIZER com um nome obsoleto
+ * mesmo depois do usuário corrigir o título na tela. */
+function resolveOccurrenceName(payload: any): string | null {
+  if (payload.typeCode === "GENERICO") {
+    return (payload.reportTitle ?? "").trim() || null;
+  }
+  return payload.occurrenceName ?? null;
+}
+
 /** Monta o array de pontos de uma ocorrência EXCESSO_PERMANENCIA: usa
  * payload.points se vier (grupo — motorista excedeu em N pontos na mesma
  * viagem), senão cai pro ponto único dos campos de topo (fluxo individual,
@@ -103,7 +115,7 @@ export async function createOccurrence(payload: any) {
     speed_kmh: payload.speedKmh ?? null,
     trip_time: payload.tripTime || null,
     session_time: payload.sessionTime || null,
-    occurrence_name: payload.occurrenceName ?? null,
+    occurrence_name: resolveOccurrenceName(payload),
     report_title: payload.reportTitle ?? null,
     cco_operator: payload.ccoOperator ?? null,
     vehicle_km: payload.vehicleKm ?? null,
@@ -360,7 +372,7 @@ export async function updateOccurrence(id: string, payload: any) {
     speed_kmh: payload.speedKmh ?? null,
     trip_time: payload.tripTime || null,
     session_time: payload.sessionTime || null,
-    occurrence_name: payload.occurrenceName ?? null,
+    occurrence_name: resolveOccurrenceName(payload),
     report_title: payload.reportTitle ?? null,
     cco_operator: payload.ccoOperator ?? null,
     vehicle_km: payload.vehicleKm ?? null,
