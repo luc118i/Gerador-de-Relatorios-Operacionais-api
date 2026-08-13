@@ -206,6 +206,8 @@ export async function listOccurrencesByDay(date: string) {
       show_section_passageiros,
       devolutiva_before_evidences,
       rizer_registered,
+      drive_file_nome,
+      drive_web_view_link,
       advertencia,
       suspensao,
       falta_tratativa,
@@ -284,6 +286,8 @@ export async function listOccurrencesByDay(date: string) {
       return s ? { dataInicio: s.data_inicio as string, dias: s.dias as number } : null;
     })(),
     rizerRegistered: o.rizer_registered ?? false,
+    driveFileNome: o.drive_file_nome ?? null,
+    driveWebViewLink: o.drive_web_view_link ?? null,
     advertencia: o.advertencia ?? true,
     suspensaoDisciplinar: o.suspensao ?? false,
     faltaTratativa: o.falta_tratativa ?? false,
