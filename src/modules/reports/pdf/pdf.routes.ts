@@ -10,6 +10,7 @@ import { getTelemetryReportPdfHandler } from "./telemetry-report.route.js";
 import { getExcessoParadaReportPdfHandler } from "./excesso-parada.route.js";
 import { getExcessoParadaManualPdfHandler } from "./excesso-parada-manual.route.js";
 import { getSolicitacaoMudancaPdfHandler } from "./solicitacao-mudanca.route.js";
+import { sendResumoAnaliseToDriveHandler } from "./resumo-analise.route.js";
 
 export function reportsPdfRoutes(app: Express) {
   // Precisa vir antes de "/reports/occurrences/:id/pdf" só por clareza —
@@ -28,4 +29,9 @@ export function reportsPdfRoutes(app: Express) {
   app.get("/reports/telemetry/:id/excesso-parada-pdf", getExcessoParadaReportPdfHandler);
   app.post("/reports/excesso-parada", getExcessoParadaManualPdfHandler);
   app.post("/reports/solicitacao-mudanca", getSolicitacaoMudancaPdfHandler);
+  // "Resumo do dia" (BI PC's Não Autorizados / tempo_permanencia.html) —
+  // recebe os dados já prontos (não lê nada do banco daqui) e devolve o
+  // PDF direto no Drive, com o mesmo cabeçalho/rodapé (numeração de
+  // página incluída) dos outros relatórios — ver resumo-analise.route.ts.
+  app.post("/reports/resumo-analise/drive", sendResumoAnaliseToDriveHandler);
 }
