@@ -27,14 +27,32 @@ const DOCX_MIME =
 const EVIDENCES_BUCKET = process.env.SUPABASE_BUCKET ?? "occurrence-evidences";
 const REPORTS_BUCKET = process.env.SUPABASE_REPORTS_BUCKET ?? "reports";
 
+// Evidências enviadas pelo fluxo normal (evidences.service.ts) já chegam do
+// Storage como JPEG 1600px/q85 — não há motivo pra decodificar e recomprimir
+// de novo a cada PDF gerado (cada recompressão JPEG só perde qualidade e
+// gasta CPU à toa). Só entra no sharp quem foge desse padrão (arquivo
+// legado, upload fora desse fluxo, etc.).
+const PRE_OPTIMIZED_MAX_BYTES = 1.5 * 1024 * 1024;
+
+// Baixa/processa no máximo N evidências por vez — evita que N fotos sejam
+// decodificadas na memória ao mesmo tempo (crítico num servidor de 512MB).
+const EMBED_CONCURRENCY = 3;
+
 /**
- * Baixa cada evidência do Storage e embute como data URI (base64), com
- * resize/compressão pra imagens — usado tanto no PDF de 1 ocorrência quanto
- * no PDF de grupo (várias ocorrências).
+ * Baixa cada evidência do Storage e embute como data URI (base64). Imagens
+ * já otimizadas no upload são embutidas direto (sem reprocessar); só passa
+ * pelo sharp quem não está nesse formato — usado tanto no PDF de 1
+ * ocorrência quanto no PDF de grupo (várias ocorrências).
  */
 async function embedPhotoEvidences(photoEvidences: PdfEvidence[]) {
-  return Promise.all(
-    photoEvidences.map(async (e: any) => {
+  const results: any[] = new Array(photoEvidences.length);
+  let next = 0;
+
+  async function worker() {
+    while (next < photoEvidences.length) {
+      const i = next++;
+      const e = photoEvidences[i] as any;
+
       let buf = await downloadPrivateFileAsBuffer(
         EVIDENCES_BUCKET,
         e.storagePath,
@@ -46,13 +64,15 @@ async function embedPhotoEvidences(photoEvidences: PdfEvidence[]) {
         e.mimeType ??
         (guessed ? String(guessed) : "application/octet-stream");
 
-      // Reduz imagens grandes antes de embutir como base64
-      // Limite: 1200px de largura, qualidade JPEG 75% — reduz drasticamente o HTML
-      if (mimeType.startsWith("image/") && !mimeType.includes("svg")) {
+      const isJpeg = mimeType.includes("jpeg") || mimeType.includes("jpg");
+      const alreadyOptimized = isJpeg && buf.byteLength <= PRE_OPTIMIZED_MAX_BYTES;
+
+      if (!alreadyOptimized && mimeType.startsWith("image/") && !mimeType.includes("svg")) {
         try {
-          buf = await sharp(buf)
-            .resize({ width: 1200, withoutEnlargement: true })
-            .jpeg({ quality: 75 })
+          buf = await sharp(buf, { limitInputPixels: 60_000_000 })
+            .rotate()
+            .resize({ width: 1600, withoutEnlargement: true })
+            .jpeg({ quality: 85, mozjpeg: true })
             .toBuffer();
         } catch {
           // mantém original se sharp falhar (ex: gif animado)
@@ -61,14 +81,20 @@ async function embedPhotoEvidences(photoEvidences: PdfEvidence[]) {
 
       const b64 = buf.toString("base64");
 
-      return {
+      results[i] = {
         dataUri: `data:image/jpeg;base64,${b64}`,
         caption: e.caption ?? "",
         linkTexto: String(e.linkTexto || "").trim(),
         linkUrl: String(e.linkUrl || "").trim(),
       };
-    }),
+    }
+  }
+
+  await Promise.all(
+    Array.from({ length: Math.min(EMBED_CONCURRENCY, photoEvidences.length) }, worker),
   );
+
+  return results;
 }
 
 /**

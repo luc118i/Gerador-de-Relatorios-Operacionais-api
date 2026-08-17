@@ -33,11 +33,17 @@ export async function uploadEvidences(args: {
     // --- NOVO BLOCO DE REDIMENSIONAMENTO ---
     let finalBuffer = file.buffer;
 
-    // Só processa se for imagem (ignora se for PDF ou outro arquivo)
+    // Só processa se for imagem (ignora se for PDF ou outro arquivo).
+    // Esse é o ÚNICO lugar onde a foto é recomprimida — o PDF/DOCX embute
+    // esse buffer direto, sem reprocessar. mozjpeg dá mais qualidade no
+    // mesmo tamanho de arquivo (ou o mesmo visual num arquivo menor) do que
+    // o encoder padrão do libjpeg, sem custo extra relevante de CPU (roda
+    // uma vez só, no upload).
     if (file.mimetype.startsWith("image/")) {
-      finalBuffer = await sharp(file.buffer)
-        .resize(800) // Limita a largura a 800px (mantém proporção)
-        .jpeg({ quality: 80 }) // Converte para JPEG (mais leve que PNG)
+      finalBuffer = await sharp(file.buffer, { limitInputPixels: 60_000_000 })
+        .rotate() // aplica a orientação EXIF antes de descartar os metadados
+        .resize({ width: 1600, withoutEnlargement: true }) // suficiente pra impressão A4
+        .jpeg({ quality: 85, mozjpeg: true })
         .toBuffer();
     }
     // ---------------------------------------

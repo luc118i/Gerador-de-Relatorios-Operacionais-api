@@ -28,8 +28,10 @@ export async function renderPdfFromHtml(html: string): Promise<Buffer> {
   const browserlessUrl = process.env.BROWSERLESS_URL;
   const htmlBytes = Buffer.byteLength(html, "utf8");
 
+  // Default baixo de propósito: em 512MB/0.25vCPU o Chrome local é o maior
+  // risco de OOM que existe aqui — preferimos mandar pro Browserless cedo.
   const BROWSERLESS_THRESHOLD_BYTES =
-    Number(process.env.BROWSERLESS_THRESHOLD_KB ?? 1024) * 1024;
+    Number(process.env.BROWSERLESS_THRESHOLD_KB ?? 300) * 1024;
 
   const isRemote = !!browserlessUrl && htmlBytes > BROWSERLESS_THRESHOLD_BYTES;
 
@@ -200,7 +202,7 @@ export async function renderSuspensaoPdfFromHtml(html: string): Promise<Buffer> 
   const browserlessUrl = process.env.BROWSERLESS_URL;
   const htmlBytes = Buffer.byteLength(html, "utf8");
   const BROWSERLESS_THRESHOLD_BYTES =
-    Number(process.env.BROWSERLESS_THRESHOLD_KB ?? 1024) * 1024;
+    Number(process.env.BROWSERLESS_THRESHOLD_KB ?? 300) * 1024;
   const isRemote = !!browserlessUrl && htmlBytes > BROWSERLESS_THRESHOLD_BYTES;
 
   if (isRemote) {
