@@ -28,10 +28,10 @@ function resolveOccurrenceName(payload: any): string | null {
   return payload.occurrenceName ?? null;
 }
 
-/** Monta o array de pontos de uma ocorrência EXCESSO_PERMANENCIA: usa
- * payload.points se vier (grupo — motorista excedeu em N pontos na mesma
- * viagem), senão cai pro ponto único dos campos de topo (fluxo individual,
- * comportamento de sempre). */
+/** Monta o array de pontos de uma ocorrência EXCESSO_PERMANENCIA ou
+ * DESCUMP_OP_PARADA_FORA: usa payload.points se vier (grupo — motorista
+ * excedeu/parou em N pontos na mesma viagem), senão cai pro ponto único dos
+ * campos de topo (fluxo individual, comportamento de sempre). */
 function resolvePoints(payload: any) {
   if (Array.isArray(payload.points) && payload.points.length > 0) {
     return payload.points as Array<{
@@ -78,10 +78,15 @@ export async function createOccurrence(payload: any) {
 
   const driver1 = drivers.find((d) => d.position === 1);
 
-  // EXCESSO_PERMANENCIA: pode vir com N pontos (payload.points) — os campos
-  // start_time/end_time/place gravados na ocorrência viram um resumo.
+  // EXCESSO_PERMANENCIA e DESCUMP_OP_PARADA_FORA podem vir com N pontos
+  // (payload.points) — os campos start_time/end_time/place gravados na
+  // ocorrência viram um resumo. Pra Parada Fora isso é o "Gerar Múltiplo"
+  // (index.html): 1 ocorrência cobrindo N locais não autorizados do mesmo
+  // veículo, em vez de N ocorrências separadas.
   const isExcessoPermanencia = payload.typeCode === "EXCESSO_PERMANENCIA";
-  const points = isExcessoPermanencia ? resolvePoints(payload) : null;
+  const isParadaFora = payload.typeCode === "DESCUMP_OP_PARADA_FORA";
+  const usesPoints = isExcessoPermanencia || isParadaFora;
+  const points = usesPoints ? resolvePoints(payload) : null;
   const summary = points ? summarizePoints(points) : null;
 
   // baseCode vem do payload OU do driver.base OU "GENERICO" quando sem tripulação
@@ -144,7 +149,7 @@ export async function createOccurrence(payload: any) {
     await updateOccurrenceBaseCode(id, snapshotBase);
   }
 
-  // 4) grava os pontos de parada (1 ou N) da ocorrência EXCESSO_PERMANENCIA
+  // 4) grava os pontos de parada (1 ou N) da ocorrência
   if (points) {
     await insertPoints(id, points);
   }
@@ -187,18 +192,15 @@ export async function createOccurrence(payload: any) {
   }
 
   // Notifica planilha apenas para ocorrências de Parada Fora do Programado
-  if (payload.typeCode === "DESCUMP_OP_PARADA_FORA" && driver1) {
+  // — 1 chamada por ponto/local não autorizado, preservando o histórico
+  // granular por parada mesmo quando N locais foram agrupados em 1 única
+  // ocorrência ("Gerar Múltiplo" em index.html).
+  if (isParadaFora && driver1 && points) {
     const driver1Snapshot = await getDriverSnapshotByOccurrence(id, 1);
     const driver2 = drivers.find((d) => d.position === 2);
-    const localIdNum = payload.placeCode
-      ? null
-      : await getLocalIdByNome(payload.place);
-    const localIdStr = payload.placeCode
-      ? String(payload.placeCode)
-      : localIdNum
-        ? String(localIdNum)
-        : "0"; // fallback: Apps Script valida campo não-vazio; 0 sinaliza "local não mapeado"
     const driverBase = driver1.driverId ? await getDriverBaseById(driver1.driverId) : undefined;
+    const driver2Snapshot = driver2 ? await getDriverSnapshotByOccurrence(id, 2) : null;
+    const driver2Base = driver2?.driverId ? await getDriverBaseById(driver2.driverId) : undefined;
     // Busca a viagem canônica sempre que houver tripId, mesmo com lineLabel
     // preenchido — é dela que vem o sentido (IDA/VOLTA), que o front não
     // costuma mandar junto do lineLabel.
@@ -223,33 +225,44 @@ export async function createOccurrence(payload: any) {
       return [code, route, time, sentido].join("|");
     })();
 
-    // motorista 1
-    await notifyAppsScript({
-      localId: localIdStr,
-      localNome: payload.place || "—",
-      carro: payload.vehicleNumber,
-      motoristaId: driver1Snapshot?.registry ?? driver1.driverId,
-      motoristaNome: driver1Snapshot?.name ?? "",
-      base: driver1Snapshot?.base_code || driverBase || baseCode,
-      dataRelatorio: payload.eventDate,
-      linha: linhaStr,
-    });
+    for (const point of points) {
+      // placeCode só existe pro ponto único (campo de topo do payload, fluxo
+      // individual) — pontos de um grupo ("Gerar Múltiplo") sempre caem no
+      // fuzzy-match por nome (getLocalIdByNome).
+      const localIdNum = (points.length === 1 && payload.placeCode)
+        ? null
+        : await getLocalIdByNome(point.place);
+      const localIdStr = (points.length === 1 && payload.placeCode)
+        ? String(payload.placeCode)
+        : localIdNum
+          ? String(localIdNum)
+          : "0"; // fallback: Apps Script valida campo não-vazio; 0 sinaliza "local não mapeado"
 
-    // motorista 2 (se existir)
-    if (driver2) {
-      const driver2Snapshot = await getDriverSnapshotByOccurrence(id, 2);
-      const driver2Base = driver2.driverId ? await getDriverBaseById(driver2.driverId) : undefined;
-
+      // motorista 1
       await notifyAppsScript({
         localId: localIdStr,
-        localNome: payload.place || "—",
+        localNome: point.place || "—",
         carro: payload.vehicleNumber,
-        motoristaId: driver2Snapshot?.registry ?? driver2.driverId,
-        motoristaNome: driver2Snapshot?.name ?? "",
-        base: driver2Snapshot?.base_code || driver2Base || baseCode,
+        motoristaId: driver1Snapshot?.registry ?? driver1.driverId,
+        motoristaNome: driver1Snapshot?.name ?? "",
+        base: driver1Snapshot?.base_code || driverBase || baseCode,
         dataRelatorio: payload.eventDate,
         linha: linhaStr,
       });
+
+      // motorista 2 (se existir)
+      if (driver2) {
+        await notifyAppsScript({
+          localId: localIdStr,
+          localNome: point.place || "—",
+          carro: payload.vehicleNumber,
+          motoristaId: driver2Snapshot?.registry ?? driver2.driverId,
+          motoristaNome: driver2Snapshot?.name ?? "",
+          base: driver2Snapshot?.base_code || driver2Base || baseCode,
+          dataRelatorio: payload.eventDate,
+          linha: linhaStr,
+        });
+      }
     }
   }
 

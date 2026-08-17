@@ -16,6 +16,7 @@ import {
 } from "./pdf.storage.js";
 import { buildOccurrencePdfHtml, buildGenericOccurrencePdfHtml, buildAnaliseOpPdfHtml } from "./pdf.template.js";
 import { extractExcessos, buildExcessoParadaReportHtml, type ExcessoEvidence, type Point } from "./excesso-parada.template.js";
+import { buildParadaForaMultiplaReportHtml } from "./parada-fora-multipla.template.js";
 import { getTempoPermanenciaMap } from "../../telemetry/repositories/tempo-permanencia.repo.js";
 import { renderPdfFromHtml } from "./pdf.puppeteer.js";
 import { renderDocxFromHtml } from "./docx.render.js";
@@ -150,6 +151,20 @@ async function buildOccurrenceHtml(
   }
 
   const isParadaFora = occurrence.typeCode === "DESCUMP_OP_PARADA_FORA";
+
+  // "Gerar Múltiplo" (index.html): 1 ocorrência DESCUMP_OP_PARADA_FORA
+  // cobrindo N locais não autorizados (occurrence.points) — template próprio,
+  // com tabela de locais. Ponto único continua no template de sempre logo
+  // abaixo, sem mudança de comportamento.
+  if (isParadaFora && occurrence.points && occurrence.points.length > 1) {
+    return buildParadaForaMultiplaReportHtml({
+      occurrence,
+      drivers,
+      evidences: embedded,
+      logoDataUri: getLogoDataUri(),
+    });
+  }
+
   // For DESCUMP_OP_PARADA_FORA: standard text before evidences, schema after
   const reportHtml = isParadaFora
     ? undefined

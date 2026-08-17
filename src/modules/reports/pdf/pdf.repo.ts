@@ -36,7 +36,7 @@ export async function getOccurrenceForPdf(
       show_section_tripulacao,
       show_section_passageiros,
       devolutiva_before_evidences,
-      occurrence_points (seq, place, start_time, end_time, permanencia_min, permitido_min, excedente_min),
+      occurrence_points (seq, place, start_time, end_time, cidade, uf, regiao, permanencia_min, permitido_min, excedente_min),
       occurrence_types:occurrence_types (
         title,
         code
@@ -104,6 +104,9 @@ export async function getOccurrenceForPdf(
         place: p.place,
         startTime: p.start_time,
         endTime: p.end_time,
+        cidade: p.cidade ?? null,
+        uf: p.uf ?? null,
+        regiao: p.regiao ?? null,
         permanenciaMin: p.permanencia_min ?? null,
         permitidoMin: p.permitido_min ?? null,
         excedenteMin: p.excedente_min ?? null,

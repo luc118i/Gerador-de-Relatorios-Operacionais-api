@@ -46,12 +46,16 @@ export type PdfOccurrence = {
   showSectionPassageiros?: boolean | null;
   devolutivaBeforeEvidences?: boolean | null;
 
-  // EXCESSO_PERMANENCIA: quando a ocorrência agrupa N pontos de parada (ver
-  // occurrence_points), startTime/endTime/place acima viram um resumo.
+  // EXCESSO_PERMANENCIA / DESCUMP_OP_PARADA_FORA: quando a ocorrência agrupa
+  // N pontos de parada (ver occurrence_points), startTime/endTime/place
+  // acima viram um resumo.
   points?: Array<{
     place: string;
     startTime: string;
     endTime: string;
+    cidade?: string | null;
+    uf?: string | null;
+    regiao?: string | null;
     permanenciaMin?: number | null;
     permitidoMin?: number | null;
     excedenteMin?: number | null;
