@@ -1,13 +1,26 @@
 import type { PdfDriver, PdfOccurrence } from "./pdf.types.js";
+import { formatDuration } from "../../../shared/time/index.js";
 
 /** Um local não autorizado visitado, dentro de uma ocorrência
  * DESCUMP_OP_PARADA_FORA agrupando N pontos (ver occurrence_points). */
 export interface ParadaForaPonto {
   seq: number;
   ponto: string;
-  regiao: string | null;
   entrada: string | null; // HH:mm
   saida: string | null;   // HH:mm
+  duracaoS: number;       // tempo no local, em segundos (trata virada de meia-noite)
+}
+
+/** Minutos entre entrada e saída (HH:mm), tratando parada que cruza a
+ * meia-noite (saída "menor" que entrada = dia seguinte). */
+function calcDuracaoSegundos(entrada: string | null, saida: string | null): number {
+  if (!entrada || !saida) return 0;
+  const [hi, mi] = entrada.split(":").map(Number);
+  const [hf, mf] = saida.split(":").map(Number);
+  if ([hi, mi, hf, mf].some((n) => Number.isNaN(n))) return 0;
+  let totalMin = (hf! * 60 + mf!) - (hi! * 60 + mi!);
+  if (totalMin <= 0) totalMin += 24 * 60;
+  return totalMin * 60;
 }
 
 export interface ParadaForaEvidence {
@@ -78,13 +91,19 @@ export function buildParadaForaMultiplaReportHtml(args: {
   const { occurrence, drivers } = args;
   const evidences = args.evidences ?? [];
 
-  const pontos: ParadaForaPonto[] = (occurrence.points ?? []).map((p, i) => ({
-    seq: i + 1,
-    ponto: p.place || "—",
-    regiao: p.regiao ?? null,
-    entrada: p.startTime ? p.startTime.slice(0, 5) : null,
-    saida: p.endTime ? p.endTime.slice(0, 5) : null,
-  }));
+  const pontos: ParadaForaPonto[] = (occurrence.points ?? []).map((p, i) => {
+    const entrada = p.startTime ? p.startTime.slice(0, 5) : null;
+    const saida = p.endTime ? p.endTime.slice(0, 5) : null;
+    return {
+      seq: i + 1,
+      ponto: p.place || "—",
+      entrada,
+      saida,
+      duracaoS: calcDuracaoSegundos(entrada, saida),
+    };
+  });
+
+  const totalDuracaoS = pontos.reduce((acc, p) => acc + p.duracaoS, 0);
 
   const prefixo = (occurrence.vehicleNumber ?? "").trim() || "—";
   const linha = (occurrence.lineLabel ?? "").trim();
@@ -127,9 +146,9 @@ export function buildParadaForaMultiplaReportHtml(args: {
       (p) => `
       <tr>
         <td class="c-ponto">${esc(p.ponto)}</td>
-        <td class="c-cls">${esc(p.regiao || "—")}</td>
         <td class="c-dt">${esc(fmtTimeBr(p.entrada))}</td>
         <td class="c-dt">${esc(fmtTimeBr(p.saida))}</td>
+        <td class="c-num">${esc(formatDuration(p.duracaoS))}</td>
       </tr>`,
     )
     .join("");
@@ -143,13 +162,17 @@ export function buildParadaForaMultiplaReportHtml(args: {
         <thead>
           <tr>
             <th class="c-ponto">Local</th>
-            <th class="c-cls">Regi&#227;o</th>
             <th class="c-dt">Entrada</th>
             <th class="c-dt">Sa&#237;da</th>
+            <th class="c-num">Tempo no Local</th>
           </tr>
         </thead>
         <tbody>
           ${linhas}
+          <tr class="tr-total">
+            <td class="c-ponto" colspan="3">TEMPO TOTAL PERDIDO NESSAS PARADAS</td>
+            <td class="c-num c-total">${esc(formatDuration(totalDuracaoS))}</td>
+          </tr>
         </tbody>
       </table>
     </div>`;
@@ -219,7 +242,10 @@ export function buildParadaForaMultiplaReportHtml(args: {
     table.exc tbody tr:nth-child(even) td { background: #fafafa; }
     .c-ponto { font-weight: 600; }
     .c-dt { color: #444; white-space: nowrap; }
-    .c-cls { color: #555; }
+    .c-num { text-align: right; white-space: nowrap; }
+    table.exc tr.tr-total td { background: #FDF5EE; font-weight: 700; }
+    table.exc tr.tr-total .c-ponto { text-align: right; }
+    .c-total { color: #c0121c; font-size: 10.5pt; }
 
     .ev-section { padding: 12px 14px; background: #fff; }
     figure.ev { margin: 0 0 12px 0; break-inside: avoid; page-break-inside: avoid; }
