@@ -11,6 +11,7 @@ import { getExcessoParadaReportPdfHandler } from "./excesso-parada.route.js";
 import { getExcessoParadaManualPdfHandler } from "./excesso-parada-manual.route.js";
 import { getSolicitacaoMudancaPdfHandler } from "./solicitacao-mudanca.route.js";
 import { sendResumoAnaliseToDriveHandler } from "./resumo-analise.route.js";
+import { sendRelatorioGeralTpToDriveHandler } from "./relatorio-geral-tp.route.js";
 
 export function reportsPdfRoutes(app: Express) {
   // Precisa vir antes de "/reports/occurrences/:id/pdf" só por clareza —
@@ -34,4 +35,9 @@ export function reportsPdfRoutes(app: Express) {
   // PDF direto no Drive, com o mesmo cabeçalho/rodapé (numeração de
   // página incluída) dos outros relatórios — ver resumo-analise.route.ts.
   app.post("/reports/resumo-analise/drive", sendResumoAnaliseToDriveHandler);
+  // "Relatório Geral" (BI PC's Não Autorizados / tempo_permanencia.html,
+  // botão no cabeçalho do Dashboard) — consolida todo o BI do período
+  // filtrado (KPIs, linha do tempo, região, top pontos, rankings,
+  // motivos) num único PDF — ver relatorio-geral-tp.route.ts.
+  app.post("/reports/relatorio-geral-tp/drive", sendRelatorioGeralTpToDriveHandler);
 }
