@@ -530,13 +530,32 @@ export async function saveRizerData(id: string, data: {
   if (error) throw error
 }
 
+// Extrai o ID do arquivo de um link do Google Drive, em qualquer formato
+// (/file/d/ID/view, ?id=ID, ou o ID puro). O mesmo arquivo pode aparecer com
+// query strings diferentes (?usp=drivesdk salvo automaticamente pelo upload
+// x ?usp=sharing quando alguém recopia o link pela UI do Drive) — o ID é a
+// única parte estável entre elas.
+function extractDriveFileId(url: string): string | null {
+  const s = (url || '').trim()
+  const m = s.match(/\/d\/([-\w]{20,})/) || s.match(/[?&]id=([-\w]{20,})/)
+  if (m && m[1]) return m[1]
+  if (/^[-\w]{20,}$/.test(s)) return s
+  return null
+}
+
 // Busca leve: dado o link do Drive salvo em saveRizerData (drive_web_view_link),
 // devolve só o essencial pra quem consome de fora (ex.: painel do Notion) —
 // motorista(s) e base, sem trazer o registro inteiro.
 // Usada pelo painel de ocorrências (Google Apps Script) para completar
 // motorista/base quando o campo "Arquivo" no Notion guarda só o link do
 // relatório, sem a matrícula/nome do motorista.
+// Casa pelo ID do arquivo (ver extractDriveFileId), não pela URL inteira —
+// o mesmo arquivo pode ter query strings diferentes dependendo de como o
+// link foi copiado.
 export async function getOccurrenceByDriveLink(driveLink: string) {
+  const fileId = extractDriveFileId(driveLink)
+  if (!fileId) return null
+
   const { data, error } = await supabaseAdmin
     .from('occurrences')
     .select(
@@ -547,7 +566,7 @@ export async function getOccurrenceByDriveLink(driveLink: string) {
       occurrence_drivers (position, name, registry, base_code)
       `,
     )
-    .eq('drive_web_view_link', driveLink)
+    .ilike('drive_web_view_link', `%${fileId}%`)
     .maybeSingle()
 
   if (error) throw error
