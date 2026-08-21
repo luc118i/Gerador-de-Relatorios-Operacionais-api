@@ -530,6 +530,46 @@ export async function saveRizerData(id: string, data: {
   if (error) throw error
 }
 
+// Busca leve: dado o link do Drive salvo em saveRizerData (drive_web_view_link),
+// devolve só o essencial pra quem consome de fora (ex.: painel do Notion) —
+// motorista(s) e base, sem trazer o registro inteiro.
+// Usada pelo painel de ocorrências (Google Apps Script) para completar
+// motorista/base quando o campo "Arquivo" no Notion guarda só o link do
+// relatório, sem a matrícula/nome do motorista.
+export async function getOccurrenceByDriveLink(driveLink: string) {
+  const { data, error } = await supabaseAdmin
+    .from('occurrences')
+    .select(
+      `
+      id,
+      base_code,
+      vehicle_number,
+      occurrence_drivers (position, name, registry, base_code)
+      `,
+    )
+    .eq('drive_web_view_link', driveLink)
+    .maybeSingle()
+
+  if (error) throw error
+  if (!data) return null
+
+  const drivers = ((data as any).occurrence_drivers ?? [])
+    .sort((a: any, b: any) => a.position - b.position)
+    .map((d: any) => ({
+      position: d.position,
+      name: d.name,
+      registry: d.registry,
+      baseCode: d.base_code,
+    }))
+
+  return {
+    id: (data as any).id as string,
+    vehicleNumber: (data as any).vehicle_number as string | null,
+    baseCode: (data as any).base_code as string | null,
+    drivers,
+  }
+}
+
 export async function markSuspensaoFlags(id: string): Promise<void> {
   const { error } = await supabaseAdmin
     .from('occurrences')

@@ -10,6 +10,7 @@ import {
 import {
   deleteOccurrence,
   getOccurrenceById,
+  getOccurrenceByDriveLink,
   incrementWhatsappSent,
   listReportTitles,
   updateTratativa,
@@ -46,6 +47,26 @@ export function occurrencesRoutes(app: Express) {
       res.json({ data: titles });
     } catch (err) {
       res.status(500).json({ error: "Failed to fetch report titles" });
+    }
+  });
+
+  // Consumido pelo painel de ocorrências (Google Apps Script / Notion): dado
+  // o link do Drive salvo em cada ocorrência (ver saveRizerData), devolve
+  // motorista(s) + base — usado quando o campo "Arquivo" no Notion só tem o
+  // link do relatório, sem matrícula/nome. Must be before /:id.
+  app.get("/occurrences/by-drive-link", async (req, res) => {
+    try {
+      const url = String(req.query.url || "").trim();
+      if (!url) {
+        return res.status(400).json({ error: "query param 'url' é obrigatório" });
+      }
+      const data = await getOccurrenceByDriveLink(url);
+      if (!data) {
+        return res.status(404).json({ error: "Ocorrência não encontrada para esse link" });
+      }
+      res.json({ data });
+    } catch (err) {
+      res.status(500).json({ error: "Internal server error" });
     }
   });
 
