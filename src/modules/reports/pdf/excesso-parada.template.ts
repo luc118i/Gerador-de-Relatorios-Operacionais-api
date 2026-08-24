@@ -13,6 +13,16 @@ export type Point = {
   garagem?: boolean;
   tipo?: string | null;
   matched?: boolean;
+  // "Permitido" já calculado antes (em minutos) — vem do esquema operacional
+  // vinculado ao ponto (parada prevista no roteiro da linha), calculado e
+  // persistido pelo front-end (tempo_permanencia.html, aba "Excedências nos
+  // pontos de apoio") no momento em que a ocorrência foi criada. Só é usado
+  // quando o ponto NÃO é rodoviária/garagem e não bate em TEMPO_PERMANENCIA
+  // (tempoMap) — nesses dois casos o valor cadastrado continua mandando,
+  // igual sempre foi. Sem isso, todo "ponto comum" caía no limite genérico
+  // fixo de 40min (getStopLimit "default"), sem nenhuma relação com a
+  // linha/esquema real do veículo.
+  permitidoMinPersisted?: number | null;
 };
 
 /** Uma parada que ultrapassou o tempo de permanência permitido. */
@@ -25,7 +35,7 @@ export interface ExcessoParada {
   permitidoMin: number;
   excessoS: number;
   classificacao: string;
-  fonte: "cadastro" | "padrão";
+  fonte: "cadastro" | "padrão" | "esquema";
   nivel: "attention" | "critical";
 }
 
@@ -38,9 +48,10 @@ function esc(s: unknown): string {
     .replaceAll("'", "&#039;");
 }
 
-function classificar(p: Point): string {
+function classificar(p: Point, fonte: ExcessoParada["fonte"]): string {
   if (p.rodoviaria) return "Rodoviária";
   if (p.garagem) return "Garagem";
+  if (fonte === "esquema") return "Ponto de Apoio";
   return "Ponto comum";
 }
 
@@ -115,6 +126,15 @@ export function extractExcessos(
       permitidoMin = cadastrado;
       limiteEfetivoMin = cadastrado; // sem tolerância: tempo permitido é estrito
       fonte = "cadastro";
+    } else if (!p.rodoviaria && !p.garagem && p.permitidoMinPersisted != null) {
+      // Ponto de apoio com esquema vinculado (front-end já calculou o
+      // "permitido" a partir da parada prevista no roteiro da linha, ver
+      // Point.permitidoMinPersisted) — usa esse valor em vez do fallback
+      // genérico "default" de getStopLimit(), que não tem noção nenhuma de
+      // esquema/linha. Também estrito, mesmo critério do "cadastro" acima.
+      permitidoMin = p.permitidoMinPersisted;
+      limiteEfetivoMin = p.permitidoMinPersisted;
+      fonte = "esquema";
     } else {
       const limite = getStopLimit({ rodoviaria: !!p.rodoviaria, garagem: !!p.garagem });
       permitidoMin = limite.esperadoMin;
@@ -135,7 +155,7 @@ export function extractExcessos(
       paradaS: p.parada_s,
       permitidoMin,
       excessoS,
-      classificacao: classificar(p),
+      classificacao: classificar(p, fonte),
       fonte,
       nivel,
     });
@@ -161,15 +181,32 @@ function fmtDateBrFromDate(d: Date): string {
   return `${dd}/${mm}/${yyyy}`;
 }
 
-/** Texto padrão da ocorrência, com prefixo, data e tempo de excesso em destaque. */
-function buildRelatoHtml(prefixo: string, tripDateLabel: string, totalExcessoS: number, qtd: number): string {
+/**
+ * Texto padrão da ocorrência, com prefixo, data e tempo de excesso em
+ * destaque. Quando há ao menos 1 parada com "permitido" vindo do esquema
+ * operacional (fonte "esquema" — ver extractExcessos) e a linha foi
+ * informada, cita a linha explicitamente em vez do "tempo previsto em ponto
+ * de parada" genérico — deixa claro de onde saiu o número comparado.
+ */
+function buildRelatoHtml(
+  prefixo: string,
+  tripDateLabel: string,
+  totalExcessoS: number,
+  qtd: number,
+  temEsquema: boolean,
+  linha: string,
+): string {
   const excessoLabel =
     qtd > 1
       ? `excesso total de ${formatDuration(totalExcessoS)} distribuído em ${qtd} paradas`
       : `tempo de excesso de ${formatDuration(totalExcessoS)}`;
 
+  const referenciaTempo = temEsquema && linha
+    ? `à parada prevista no esquema operacional da linha <strong>${esc(linha)}</strong> em ponto de apoio`
+    : `ao tempo previsto em ponto de parada`;
+
   return `
-    <p>Durante a análise das atividades do veículo de número <strong>${esc(prefixo)}</strong> na viagem do dia <strong>${esc(tripDateLabel)}</strong>, identificamos o descumprimento operacional por parte do condutor, em razão da permanência superior ao tempo previsto em ponto de parada <strong style="color: #c0121c;">(${esc(excessoLabel)})</strong>.</p>
+    <p>Durante a análise das atividades do veículo de número <strong>${esc(prefixo)}</strong> na viagem do dia <strong>${esc(tripDateLabel)}</strong>, identificamos o descumprimento operacional por parte do condutor, em razão da permanência superior ${referenciaTempo} <strong style="color: #c0121c;">(${esc(excessoLabel)})</strong>.</p>
     <p>Esta conduta caracteriza uma violação dos procedimentos operacionais estabelecidos, impactando diretamente a programação da viagem, gerando atrasos e comprometendo a qualidade do serviço prestado aos passageiros.</p>
     <p>Além disso, a ocorrência ocasiona desconformidade em relação aos horários divulgados no ato da comercialização das passagens, afetando a confiabilidade das informações fornecidas aos clientes.</p>
   `;
@@ -229,8 +266,10 @@ export function buildExcessoParadaReportHtml(args: {
       : "",
   ].join("");
 
+  const temEsquema = excessos.some((e) => e.fonte === "esquema");
+
   const relatoHtml = excessos.length > 0
-    ? buildRelatoHtml(prefixo, tripDateLabel, totalExcessoS, excessos.length)
+    ? buildRelatoHtml(prefixo, tripDateLabel, totalExcessoS, excessos.length, temEsquema, linha)
     : `<p><em>Nenhuma parada excedeu o tempo de permanência permitido nesta viagem.</em></p>`;
 
   // ── Tabela de paradas em excesso ────────────────────────────────────────────
@@ -248,6 +287,10 @@ export function buildExcessoParadaReportHtml(args: {
       </tr>`,
     )
     .join("");
+
+  const notaEsquemaHtml = temEsquema
+    ? `<div class="tbl-nota">* Permitido conforme parada prevista no esquema operacional da linha, quando aplic&#225;vel (Classifica&#231;&#227;o "Ponto de Apoio").</div>`
+    : "";
 
   const tabelaHtml = excessos.length === 0
     ? ""
@@ -270,6 +313,7 @@ export function buildExcessoParadaReportHtml(args: {
           ${linhas}
         </tbody>
       </table>
+      ${notaEsquemaHtml}
     </div>`;
 
   // ── Registro fotográfico (evidências) ───────────────────────────────────────
@@ -348,6 +392,7 @@ export function buildExcessoParadaReportHtml(args: {
     .c-exc { font-weight: 700; color: #c0121c; font-size: 11pt; }
     .exc-crit { color: #c0121c; }
     .exc-warn { color: #c0121c; }
+    .tbl-nota { padding: 5px 7px; font-size: 8.5pt; color: #666; background: #fff; border-top: 1px solid #ccc; }
 
     /* Registro fotográfico */
     .ev-section { padding: 12px 14px; background: #fff; }

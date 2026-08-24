@@ -280,6 +280,11 @@ async function buildGroupExcessoPermanenciaHtml(
 
     const placeLc = (occurrence.place ?? "").toLowerCase();
 
+    // Cada ocorrência do grupo tem exatamente 1 ponto (é assim que o "Gerar
+    // Relatório" em grupo de tempo_permanencia.html cria: 1 ocorrência por
+    // ponto de parada) — occurrence.points[0] é o mesmo ponto que gerou
+    // entrada/saída/place acima, com o "permitido" já calculado (esquema,
+    // se ponto de apoio) persistido junto.
     return {
       seq: i + 1,
       ponto: occurrence.place ?? "",
@@ -288,6 +293,7 @@ async function buildGroupExcessoPermanenciaHtml(
       parada_s: paradaS,
       rodoviaria: /rodovi[áa]ri/.test(placeLc),
       garagem: placeLc.includes("garagem"),
+      permitidoMinPersisted: occurrence.points?.[0]?.permitidoMin ?? null,
     };
   });
 
@@ -436,7 +442,14 @@ function clamp(n: number, min: number, max: number) {
 /** Monta o `Point` (entrada/saída/parada_s, com virada de meia-noite) de UM
  * ponto de parada — usado tanto pro ponto único de uma ocorrência quanto,
  * em loop, pelos N pontos de um grupo (occurrence_points). */
-function buildPoint(seq: number, eventDate: string, place: string, startTime: string, endTime: string): Point {
+function buildPoint(
+  seq: number,
+  eventDate: string,
+  place: string,
+  startTime: string,
+  endTime: string,
+  permitidoMinPersisted?: number | null,
+): Point {
   const start = (startTime ?? "").slice(0, 5);
   const end = (endTime ?? "").slice(0, 5);
 
@@ -467,6 +480,7 @@ function buildPoint(seq: number, eventDate: string, place: string, startTime: st
     parada_s: paradaS,
     rodoviaria: /rodovi[áa]ri/.test(placeLc),
     garagem: placeLc.includes("garagem"),
+    permitidoMinPersisted: permitidoMinPersisted ?? null,
   };
 }
 
@@ -482,7 +496,7 @@ async function buildExcessoPermanenciaHtml(
   // Ocorrência agrupando N pontos (occurrence_points) vira N Point[]; senão,
   // cai pro ponto único de sempre (startTime/endTime/place da ocorrência).
   const pontos: Point[] = occurrence.points && occurrence.points.length > 0
-    ? occurrence.points.map((p, i) => buildPoint(i + 1, eventDate, p.place, p.startTime, p.endTime))
+    ? occurrence.points.map((p, i) => buildPoint(i + 1, eventDate, p.place, p.startTime, p.endTime, p.permitidoMin))
     : [buildPoint(1, eventDate, occurrence.place ?? "", occurrence.startTime ?? "", occurrence.endTime ?? "")];
 
   const excessos = extractExcessos(pontos, tempoMap, { fuzzy: true });
