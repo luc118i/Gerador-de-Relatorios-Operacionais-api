@@ -23,6 +23,18 @@ export type ResumoAnaliseItem = {
   detalhe?: string | null | undefined;
 };
 
+// Ponto de apoio: "permitido" vem da parada prevista no esquema
+// operacional da linha (não de uma tabela fixa por cidade, como
+// rodoviária) — pode ser null quando o item foi descartado por
+// justificativa sem nunca ter esquema vinculado. foraDoRoteiro sinaliza
+// quando o local nem consta no roteiro (permanência inteira virou
+// excedente — ver _aplicarEsquemaAoItem em tempo_permanencia.html).
+export type ResumoAnaliseItemApoio = ResumoAnaliseItem & {
+  permanenciaMin?: number | null | undefined;
+  permitidoMin?: number | null | undefined;
+  foraDoRoteiro?: boolean | undefined;
+};
+
 const MOTIVO_CORES_PADRAO: Record<string, string> = {
   ANTECIPADO: "#f0c040",
   INICIO_VIAGEM: "#3b82c4",
@@ -44,9 +56,11 @@ export function buildResumoAnalisePdfHtml(args: {
   dataLabel: string;
   analisadoPor?: string | null | undefined;
   itens: ResumoAnaliseItem[];
+  itensApoio?: ResumoAnaliseItemApoio[] | undefined;
   logoDataUri?: string | null | undefined;
 }): string {
   const { regiao, dataLabel, analisadoPor, itens, logoDataUri } = args;
+  const itensApoio = args.itensApoio ?? [];
 
   const veiculos = new Set<string>();
   const porMotivo = new Map<string, { label: string; cor: string; count: number }>();
@@ -110,6 +124,74 @@ export function buildResumoAnalisePdfHtml(args: {
     })
     .join("");
 
+  // ── Ponto de apoio — tabela própria, separada da rodoviária acima ──
+  // (não entra no resumo/distribuição por motivo do topo, que continua
+  // só rodoviária). "Excedente" cai pra "—" quando o item nunca teve
+  // esquema vinculado (descartado por justificativa sem "Ver esquema").
+  const veiculosApoio = new Set<string>();
+  let maiorExcedenteApoio = 0;
+  for (const it of itensApoio) {
+    veiculosApoio.add(it.veiculo);
+    maiorExcedenteApoio = Math.max(maiorExcedenteApoio, Number(it.excedenteMin) || 0);
+  }
+
+  const ordenadosApoio = [...itensApoio].sort(
+    (a, b) => a.veiculo.localeCompare(b.veiculo) || a.entrada.localeCompare(b.entrada),
+  );
+
+  const linhasTabelaApoio = ordenadosApoio
+    .map((it, idx) => {
+      const num = String(idx + 1).padStart(2, "0");
+      const local =
+        esc(it.ponto) +
+        (it.foraDoRoteiro
+          ? ` <span class="occ-sub" style="color:#e05050;">(fora do roteiro)</span>`
+          : it.cidade ? ` <span class="occ-sub">(${esc(it.cidade)}${it.uf ? " - " + esc(it.uf) : ""})</span>` : "");
+      const cor = it.motivoCor || MOTIVO_CORES_PADRAO[it.motivo ?? ""] || "#9ca3af";
+      const rowClass = idx % 2 === 0 ? "row-even" : "row-odd";
+      const permanenciaTxt = it.permanenciaMin != null ? it.permanenciaMin + " min" : "—";
+      const permitidoTxt = it.permitidoMin != null ? it.permitidoMin + " min" : "—";
+      return `
+      <tr class="${rowClass}">
+        <td class="occ-num occ-td">${num}</td>
+        <td class="occ-td col-nowrap" style="font-family:monospace;font-weight:700;">${esc(it.veiculo)}</td>
+        <td class="occ-td">${local}</td>
+        <td class="occ-td col-nowrap col-center">${esc(it.entrada)}</td>
+        <td class="occ-td col-nowrap col-center">${esc(it.saida)}</td>
+        <td class="occ-td col-nowrap col-center">${permanenciaTxt}</td>
+        <td class="occ-td col-nowrap col-center">${permitidoTxt}</td>
+        <td class="occ-td col-nowrap col-center" style="font-weight:700;color:#f47920;">${it.excedenteMin != null ? "+" + it.excedenteMin + " min" : "—"}</td>
+        <td class="occ-td col-nowrap col-center"><span class="motivo-badge" style="background:${cor};">${esc(it.motivoLabel)}</span></td>
+        <td class="occ-td" style="font-size:7.5pt;color:#6b7280;">${esc(it.detalhe || "—")}</td>
+      </tr>`;
+    })
+    .join("");
+
+  const secaoApoioHtml = itensApoio.length === 0 ? "" : `
+  <div class="section-header" style="${itens.length > 0 ? "page-break-before: always;" : ""}">Excesso em Ponto de Apoio</div>
+  <table class="summary-table"><tr>
+    <td class="summary-cell"><div class="summary-number">${itensApoio.length}</div><div class="summary-label">Analisadas</div></td>
+    <td class="summary-cell"><div class="summary-number">${veiculosApoio.size}</div><div class="summary-label">Veículos</div></td>
+    <td class="summary-cell"><div class="summary-number">+${maiorExcedenteApoio}</div><div class="summary-label">Maior excedente (min)</div></td>
+  </tr></table>
+  <table class="occ-table" cellspacing="0" cellpadding="0">
+    <thead>
+      <tr>
+        <th class="occ-th" style="width:22px;text-align:center;">#</th>
+        <th class="occ-th" style="width:56px;">Veículo</th>
+        <th class="occ-th">Ponto de apoio</th>
+        <th class="occ-th" style="width:52px;">Chegada</th>
+        <th class="occ-th" style="width:48px;">Saída</th>
+        <th class="occ-th" style="width:64px;">Permanência</th>
+        <th class="occ-th" style="width:64px;">Permitido</th>
+        <th class="occ-th" style="width:64px;">Excedente</th>
+        <th class="occ-th" style="width:112px;">Motivo</th>
+        <th class="occ-th">Detalhe</th>
+      </tr>
+    </thead>
+    <tbody>${linhasTabelaApoio}</tbody>
+  </table>`;
+
   return `<!doctype html>
 <html>
 <head>
@@ -167,12 +249,13 @@ export function buildResumoAnalisePdfHtml(args: {
     </div>
     <div class="report-header-body">
       <div class="report-header-title">Resumo de Análise — Tempo de Permanência</div>
-      <div class="report-header-sub">${esc(regiao)} &nbsp;·&nbsp; ${esc(dataLabel)} &nbsp;·&nbsp; ${itens.length} excedência${itens.length !== 1 ? "s" : ""} analisada${itens.length !== 1 ? "s" : ""}${analisadoPor ? ` &nbsp;·&nbsp; Por ${esc(analisadoPor)}` : ""}</div>
+      <div class="report-header-sub">${esc(regiao)} &nbsp;·&nbsp; ${esc(dataLabel)} &nbsp;·&nbsp; ${itens.length + itensApoio.length} excedência${itens.length + itensApoio.length !== 1 ? "s" : ""} analisada${itens.length + itensApoio.length !== 1 ? "s" : ""}${analisadoPor ? ` &nbsp;·&nbsp; Por ${esc(analisadoPor)}` : ""}</div>
     </div>
   </div>
 
   <hr class="sep" />
 
+  ${itens.length === 0 ? "" : `
   <table class="summary-table"><tr>
     <td class="summary-cell"><div class="summary-number">${itens.length}</div><div class="summary-label">Analisadas</div></td>
     <td class="summary-cell"><div class="summary-number">${veiculos.size}</div><div class="summary-label">Veículos</div></td>
@@ -183,8 +266,9 @@ export function buildResumoAnalisePdfHtml(args: {
 
   ${motivosOrdenados.length ? `
   <div class="section-header">Distribuição por motivo</div>
-  <table class="dist-table">${distRows}</table>` : ""}
+  <table class="dist-table">${distRows}</table>` : ""}`}
 
+  ${itens.length === 0 ? "" : `
   <div class="section-header" style="${itens.length > 12 ? "page-break-before: always;" : ""}">Listagem completa</div>
   <table class="occ-table" cellspacing="0" cellpadding="0">
     <thead>
@@ -200,7 +284,9 @@ export function buildResumoAnalisePdfHtml(args: {
       </tr>
     </thead>
     <tbody>${linhasTabela}</tbody>
-  </table>
+  </table>`}
+
+  ${secaoApoioHtml}
 
 </body>
 </html>`;

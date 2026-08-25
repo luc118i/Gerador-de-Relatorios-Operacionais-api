@@ -28,13 +28,28 @@ const ItemSchema = z.object({
   detalhe: z.string().trim().optional().nullable(),
 });
 
+// Ponto de apoio — mesma base do ItemSchema, mais os campos que só fazem
+// sentido pra esse tipo (permanência/permitido separados, já que o
+// "permitido" vem do esquema operacional e pode não existir ainda quando
+// o item foi só descartado por justificativa sem nunca vincular esquema;
+// foraDoRoteiro sinaliza quando o local nem consta no roteiro — ver
+// _aplicarEsquemaAoItem em tempo_permanencia.html).
+const ItemApoioSchema = ItemSchema.extend({
+  permanenciaMin: z.number().nullable().optional(),
+  permitidoMin: z.number().nullable().optional(),
+  foraDoRoteiro: z.boolean().optional(),
+});
+
 const BodySchema = z.object({
   regiao: z.string().trim().min(1),
   dataLabel: z.string().trim().optional().default(""),
   analisadoPor: z.string().trim().optional().nullable(),
-  itens: z.array(ItemSchema).min(1, "Nenhuma excedência analisada pra resumir."),
+  itens: z.array(ItemSchema).optional().default([]),
+  itensApoio: z.array(ItemApoioSchema).optional().default([]),
   accessToken: z.string().trim().min(1, "accessToken é obrigatório"),
   folderId: z.string().trim().min(1, "folderId é obrigatório"),
+}).refine((b) => b.itens.length > 0 || b.itensApoio.length > 0, {
+  message: "Nenhuma excedência analisada pra resumir.",
 });
 
 function buildFileName(regiao: string, dataLabel: string): string {
@@ -55,6 +70,7 @@ export async function sendResumoAnaliseToDriveHandler(req: Request, res: Respons
       dataLabel: b.dataLabel,
       analisadoPor: b.analisadoPor,
       itens: b.itens,
+      itensApoio: b.itensApoio,
       logoDataUri: getLogoDataUri(),
     });
 
