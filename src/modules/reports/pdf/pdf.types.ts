@@ -59,6 +59,7 @@ export type PdfOccurrence = {
     permanenciaMin?: number | null;
     permitidoMin?: number | null;
     excedenteMin?: number | null;
+    motoristaQuestionado?: string | null;
   }>;
 };
 

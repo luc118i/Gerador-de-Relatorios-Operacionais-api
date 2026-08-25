@@ -36,7 +36,7 @@ export async function getOccurrenceForPdf(
       show_section_tripulacao,
       show_section_passageiros,
       devolutiva_before_evidences,
-      occurrence_points (seq, place, start_time, end_time, cidade, uf, regiao, permanencia_min, permitido_min, excedente_min),
+      occurrence_points (seq, place, start_time, end_time, cidade, uf, regiao, permanencia_min, permitido_min, excedente_min, motorista_questionado),
       occurrence_types:occurrence_types (
         title,
         code
@@ -110,6 +110,7 @@ export async function getOccurrenceForPdf(
         permanenciaMin: p.permanencia_min ?? null,
         permitidoMin: p.permitido_min ?? null,
         excedenteMin: p.excedente_min ?? null,
+        motoristaQuestionado: p.motorista_questionado ?? null,
       })),
     reportText: "",
   };

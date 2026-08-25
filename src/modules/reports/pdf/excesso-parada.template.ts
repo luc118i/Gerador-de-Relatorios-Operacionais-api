@@ -23,6 +23,11 @@ export type Point = {
   // fixo de 40min (getStopLimit "default"), sem nenhuma relação com a
   // linha/esquema real do veículo.
   permitidoMinPersisted?: number | null;
+  // Se o motorista foi questionado via WhatsApp ("Perguntar ao motorista",
+  // ponto de apoio) antes deste relatório ser gerado — "ENVIADA" | "PULADA"
+  // | null (rodoviária nunca manda isso). Ver excesso-parada.template.ts
+  // pra como isso aparece no PDF (coluna "Motorista quest.").
+  motoristaQuestionado?: string | null;
 };
 
 /** Uma parada que ultrapassou o tempo de permanência permitido. */
@@ -37,6 +42,7 @@ export interface ExcessoParada {
   classificacao: string;
   fonte: "cadastro" | "padrão" | "esquema";
   nivel: "attention" | "critical";
+  motoristaQuestionado?: string | null;
 }
 
 function esc(s: unknown): string {
@@ -158,6 +164,7 @@ export function extractExcessos(
       classificacao: classificar(p, fonte),
       fonte,
       nivel,
+      motoristaQuestionado: p.motoristaQuestionado ?? null,
     });
   }
 
@@ -273,6 +280,15 @@ export function buildExcessoParadaReportHtml(args: {
     : `<p><em>Nenhuma parada excedeu o tempo de permanência permitido nesta viagem.</em></p>`;
 
   // ── Tabela de paradas em excesso ────────────────────────────────────────────
+  // Coluna "Motorista quest." só aparece quando pelo menos 1 excesso é de
+  // ponto de apoio (fonte esquema) — rodoviária não tem esse fluxo, não faz
+  // sentido poluir relatórios puramente rodoviários com uma coluna vazia.
+  function motoristaQuestionadoLabel(m: string | null | undefined): string {
+    if (m === "ENVIADA") return "Sim (WhatsApp)";
+    if (m === "PULADA") return "Pulada";
+    return "—";
+  }
+
   const linhas = excessos
     .map(
       (e) => `
@@ -284,12 +300,13 @@ export function buildExcessoParadaReportHtml(args: {
         <td class="c-num">${esc(formatDuration(e.paradaS))}</td>
         <td class="c-num">${e.permitidoMin}min</td>
         <td class="c-num c-exc ${e.nivel === "critical" ? "exc-crit" : "exc-warn"}">${esc(formatDuration(e.excessoS))}</td>
+        ${temEsquema ? `<td class="c-num">${esc(motoristaQuestionadoLabel(e.motoristaQuestionado))}</td>` : ""}
       </tr>`,
     )
     .join("");
 
   const notaEsquemaHtml = temEsquema
-    ? `<div class="tbl-nota">* Permitido conforme parada prevista no esquema operacional da linha, quando aplic&#225;vel (Classifica&#231;&#227;o "Ponto de Apoio").</div>`
+    ? `<div class="tbl-nota">* Permitido conforme parada prevista no esquema operacional da linha, quando aplic&#225;vel (Classifica&#231;&#227;o "Ponto de Apoio"). "Motorista quest." indica se ele foi questionado sobre o motivo via WhatsApp antes deste relat&#243;rio ser gerado.</div>`
     : "";
 
   const tabelaHtml = excessos.length === 0
@@ -307,6 +324,7 @@ export function buildExcessoParadaReportHtml(args: {
             <th class="c-num">Perman&#234;ncia</th>
             <th class="c-num">Permitido</th>
             <th class="c-num">Excesso</th>
+            ${temEsquema ? '<th class="c-num">Motorista quest.</th>' : ""}
           </tr>
         </thead>
         <tbody>

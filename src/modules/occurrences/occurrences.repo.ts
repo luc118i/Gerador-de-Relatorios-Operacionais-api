@@ -84,6 +84,7 @@ type OccurrencePointInput = {
   excedenteMin?: number;
   lat?: number | null;
   lng?: number | null;
+  motoristaQuestionado?: string | null;
 };
 
 /** Substitui os pontos de parada de uma ocorrência EXCESSO_PERMANENCIA
@@ -118,6 +119,7 @@ export async function insertPoints(
         excedente_min: p.excedenteMin ?? null,
         lat: p.lat ?? null,
         lng: p.lng ?? null,
+        motorista_questionado: p.motoristaQuestionado ?? null,
       })),
     );
 
@@ -127,7 +129,7 @@ export async function insertPoints(
 export async function listPointsByOccurrence(occurrenceId: string) {
   const { data, error } = await supabaseAdmin
     .from("occurrence_points")
-    .select("place, start_time, end_time, cidade, uf, regiao, permanencia_min, permitido_min, excedente_min, lat, lng")
+    .select("place, start_time, end_time, cidade, uf, regiao, permanencia_min, permitido_min, excedente_min, lat, lng, motorista_questionado")
     .eq("occurrence_id", occurrenceId)
     .order("seq", { ascending: true });
 
@@ -142,6 +144,7 @@ export async function listPointsByOccurrence(occurrenceId: string) {
     regiao: p.regiao ?? null,
     permanenciaMin: p.permanencia_min ?? null,
     permitidoMin: p.permitido_min ?? null,
+    motoristaQuestionado: p.motorista_questionado ?? null,
     excedenteMin: p.excedente_min ?? null,
     lat: p.lat ?? null,
     lng: p.lng ?? null,

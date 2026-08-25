@@ -84,6 +84,11 @@ export const createOccurrenceSchema = z.object({
   excedenteMin: z.number().optional(),
   lat: z.number().nullable().optional(),
   lng: z.number().nullable().optional(),
+  // "ENVIADA" | "PULADA" | ausente — se o motorista foi questionado via
+  // WhatsApp (botão "Perguntar ao motorista", ponto de apoio) antes deste
+  // relatório ser gerado. Rodoviária nunca manda isso (fluxo não existe
+  // lá). Ver excesso-parada.template.ts pra como aparece no PDF.
+  motoristaQuestionado: z.string().optional().nullable(),
 
   // Vários pontos de parada dentro de UMA ocorrência EXCESSO_PERMANENCIA
   // (ex.: motorista excede em mais de um ponto na mesma viagem) — evita
@@ -104,6 +109,7 @@ export const createOccurrenceSchema = z.object({
         excedenteMin: z.number().optional(),
         lat: z.number().nullable().optional(),
         lng: z.number().nullable().optional(),
+        motoristaQuestionado: z.string().optional().nullable(),
       }),
     )
     .min(1)

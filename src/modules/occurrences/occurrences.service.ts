@@ -39,6 +39,7 @@ function resolvePoints(payload: any) {
       cidade?: string; uf?: string; regiao?: string;
       permanenciaMin?: number; permitidoMin?: number; excedenteMin?: number;
       lat?: number | null; lng?: number | null;
+      motoristaQuestionado?: string | null;
     }>;
   }
   return [{
@@ -53,6 +54,7 @@ function resolvePoints(payload: any) {
     excedenteMin: payload.excedenteMin,
     lat: payload.lat ?? null,
     lng: payload.lng ?? null,
+    motoristaQuestionado: payload.motoristaQuestionado ?? null,
   }];
 }
 
