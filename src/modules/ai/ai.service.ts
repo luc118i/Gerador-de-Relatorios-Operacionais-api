@@ -1,5 +1,16 @@
 import Groq from "groq-sdk";
 
+// Modelo do Groq usado em todas as chamadas de IA.
+// O antigo "llama-3.3-70b-versatile" foi descontinuado pelo Groq (retorna
+// model_not_found). Os gpt-oss são modelos de reasoning: passamos sempre
+// reasoning_effort "low" + reasoning_format "hidden" para o `content` vir
+// limpo e os tokens de raciocínio não estourarem o max_tokens.
+const GROQ_MODEL = "openai/gpt-oss-120b";
+const GROQ_REASONING = {
+  reasoning_effort: "low",
+  reasoning_format: "hidden",
+} as const;
+
 function getClient() {
   const key = process.env.GROQ_API_KEY;
   if (!key) throw new Error("GROQ_API_KEY não configurada no .env");
@@ -42,7 +53,8 @@ export async function correctOccurrenceText(html: string, plainText: string): Pr
 
   // 3. Groq corrige o HTML com base nos erros identificados
   const completion = await groq.chat.completions.create({
-    model: "llama-3.3-70b-versatile",
+    model: GROQ_MODEL,
+    ...GROQ_REASONING,
     messages: [
       {
         role: "system",
@@ -57,7 +69,7 @@ ${html}`,
       },
     ],
     temperature: 0.05,
-    max_tokens: 1024,
+    max_tokens: 2048,
   });
 
   const corrected = completion.choices[0]?.message?.content?.trim();
@@ -128,13 +140,14 @@ Relatório:
 ${plain}`;
 
   const completion = await groq.chat.completions.create({
-    model: "llama-3.3-70b-versatile",
+    model: GROQ_MODEL,
+    ...GROQ_REASONING,
     messages: [
       { role: "system", content: systemPrompt },
       { role: "user",   content: userPrompt },
     ],
     temperature: 0.25,
-    max_tokens: mode === "whatsapp" ? 400 : 600,
+    max_tokens: mode === "whatsapp" ? 1200 : 1600,
   });
 
   const result = completion.choices[0]?.message?.content?.trim();
@@ -181,7 +194,8 @@ Dados:
 Escreva apenas a frase, sem introdução, sem explicações adicionais. Termine com ponto final.`;
 
   const completion = await groq.chat.completions.create({
-    model: "llama-3.3-70b-versatile",
+    model: GROQ_MODEL,
+    ...GROQ_REASONING,
     messages: [
       {
         role: "system",
@@ -192,7 +206,7 @@ Escreva apenas a frase, sem introdução, sem explicações adicionais. Termine 
       { role: "user", content: userContent },
     ],
     temperature: 0.2,
-    max_tokens: 200,
+    max_tokens: 800,
   });
 
   const result = completion.choices[0]?.message?.content?.trim();
@@ -209,7 +223,8 @@ export async function summarizeOccurrenceText(
   const tituloInfo = title?.trim() ? `Título da ocorrência: ${title}\n` : "";
 
   const completion = await groq.chat.completions.create({
-    model: "llama-3.3-70b-versatile",
+    model: GROQ_MODEL,
+    ...GROQ_REASONING,
     messages: [
       {
         role: "system",
@@ -222,7 +237,7 @@ export async function summarizeOccurrenceText(
       },
     ],
     temperature: 0.3,
-    max_tokens: 300,
+    max_tokens: 900,
   });
 
   const result = completion.choices[0]?.message?.content?.trim();
