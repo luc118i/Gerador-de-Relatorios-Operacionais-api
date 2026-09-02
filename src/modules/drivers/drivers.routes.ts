@@ -52,6 +52,8 @@ export function driversRoutes(app: Express) {
         name: payloadRaw.name,
         ...(payloadRaw.base !== undefined ? { base: payloadRaw.base } : {}),
         ...(payloadRaw.phone !== undefined ? { phone: payloadRaw.phone } : {}),
+        ...(payloadRaw.criadoPor !== undefined ? { criadoPor: payloadRaw.criadoPor } : {}),
+        ...(payloadRaw.criadoPorId !== undefined ? { criadoPorId: payloadRaw.criadoPorId } : {}),
       };
       const created = await createDriver(payload);
       res.status(201).json(created);

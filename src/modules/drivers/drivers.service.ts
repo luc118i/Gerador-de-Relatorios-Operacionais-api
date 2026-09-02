@@ -23,7 +23,16 @@ export async function lookupDriver(code: string) {
 export async function getDriver(id: string) {
   const row = await getDriverById(id);
   if (!row) return null;
-  return { id: row.id, code: row.code, name: row.name, base: row.base, phone: row.phone };
+  return {
+    id: row.id,
+    code: row.code,
+    name: row.name,
+    base: row.base,
+    phone: row.phone,
+    criadoPor: row.criado_por ?? null,
+    criadoPorId: row.criado_por_user_id ?? null,
+    criadoEm: row.created_at ?? null,
+  };
 }
 
 export async function listDrivers(args: {
@@ -48,6 +57,8 @@ type InsertDriverArgs = {
   name: string;
   base: string | null; // base SEMPRE presente
   phone?: string | null;
+  criadoPor?: string | null;
+  criadoPorId?: string | null;
 };
 
 export async function createDriver(payload: {
@@ -55,12 +66,16 @@ export async function createDriver(payload: {
   name: string;
   base?: string | null;
   phone?: string | null;
+  criadoPor?: string | null;
+  criadoPorId?: string | null;
 }) {
   const args: InsertDriverArgs = {
     code: payload.code,
     name: payload.name,
     base: payload.base ?? null,
     phone: payload.phone ?? null,
+    criadoPor: payload.criadoPor ?? null,
+    criadoPorId: payload.criadoPorId ?? null,
   };
 
   const row = await insertDriver(args);
@@ -70,6 +85,9 @@ export async function createDriver(payload: {
     name: row.name,
     base: row.base,
     phone: row.phone,
+    criadoPor: row.criado_por ?? null,
+    criadoPorId: row.criado_por_user_id ?? null,
+    criadoEm: row.created_at ?? null,
   };
 }
 

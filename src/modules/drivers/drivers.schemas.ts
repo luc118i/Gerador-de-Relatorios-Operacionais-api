@@ -15,6 +15,10 @@ export const createDriverSchema = z.object({
   name: z.string().min(1),
   base: z.string().optional().nullable(),
   phone: z.string().optional().nullable(),
+  // Log de autoria do cadastro (best-effort, enviado pelo app). Ignorado no
+  // /drivers/upsert do GAS.
+  criadoPor: z.string().optional().nullable(),
+  criadoPorId: z.string().uuid().optional().nullable(),
 });
 
 // mantém assim, mas vamos tipar na rota

@@ -43,12 +43,23 @@ export async function lookupDriverByCode(code: string) {
 export async function getDriverById(id: string) {
   const { data, error } = await supabaseAdmin
     .from("drivers")
-    .select("id, code, name, base, phone")
+    .select("id, code, name, base, phone, criado_por, criado_por_user_id, created_at")
     .eq("id", id)
     .maybeSingle();
 
   if (error) throw error;
-  return data as { id: string; code: string; name: string; base: string | null; phone: string | null } | null;
+  return data as
+    | {
+        id: string;
+        code: string;
+        name: string;
+        base: string | null;
+        phone: string | null;
+        criado_por: string | null;
+        criado_por_user_id: string | null;
+        created_at: string | null;
+      }
+    | null;
 }
 
 export async function insertDriver(args: {
@@ -56,6 +67,8 @@ export async function insertDriver(args: {
   name: string;
   base: string | null;
   phone?: string | null;
+  criadoPor?: string | null;
+  criadoPorId?: string | null;
 }) {
   const { data, error } = await supabaseAdmin
     .from("drivers")
@@ -64,13 +77,27 @@ export async function insertDriver(args: {
       name: args.name.trim(),
       base: args.base?.trim() || null,
       phone: args.phone?.trim() || null,
+      criado_por: args.criadoPor?.trim() || null,
+      criado_por_user_id: args.criadoPorId || null,
       active: true,
     })
-    .select("id, code, name, base, phone, active")
+    .select(
+      "id, code, name, base, phone, active, criado_por, criado_por_user_id, created_at",
+    )
     .single();
 
   if (error) throw error;
-  return data as { id: string; code: string; name: string; base: string | null; phone: string | null; active: boolean };
+  return data as {
+    id: string;
+    code: string;
+    name: string;
+    base: string | null;
+    phone: string | null;
+    active: boolean;
+    criado_por: string | null;
+    criado_por_user_id: string | null;
+    created_at: string | null;
+  };
 }
 
 export async function updateDriverRepo(args: {
