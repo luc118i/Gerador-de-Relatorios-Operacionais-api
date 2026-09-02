@@ -6,6 +6,11 @@ import {
   getDriverOccurrenceHistoryRows,
   type DashboardRow,
 } from "./disciplinary.repo.js";
+import { listBaseResponsaveis } from "../base-responsaveis/base-responsaveis.repo.js";
+import {
+  buildRegistryLabelMap,
+  canonicalBaseLabel,
+} from "./base-canonical.js";
 
 export async function getDriverSituation(driverId: string) {
   const row = await getDriverSituationRow(driverId);
@@ -49,6 +54,16 @@ const RANKING_LIMIT = 10;
 export async function getDashboardSummary() {
   const rows = await getDashboardRows();
 
+  // De-para de normalização de base (legado com grafias variadas). Se o
+  // cadastro de bases falhar, segue sem ele — a normalização de caixa ainda
+  // agrupa "Montes Claros" / "MONTES CLAROS".
+  const registryByKey = buildRegistryLabelMap(
+    await listBaseResponsaveis().catch(() => []),
+  );
+  const SEM_BASE = "Sem base";
+  const baseLabelOf = (raw: string | null) =>
+    canonicalBaseLabel(raw, registryByKey) ?? SEM_BASE;
+
   const totals = {
     motoristas: rows.length,
     comOcorrencia: rows.filter((r) => r.total_ocorrencias > 0).length,
@@ -58,7 +73,7 @@ export async function getDashboardSummary() {
 
   const porBaseMap = new Map<string, number>();
   for (const r of rows) {
-    const base = r.base?.trim() || "Sem base";
+    const base = baseLabelOf(r.base);
     porBaseMap.set(base, (porBaseMap.get(base) ?? 0) + r.total_ocorrencias);
   }
   const porBase = Array.from(porBaseMap.entries())
@@ -70,7 +85,7 @@ export async function getDashboardSummary() {
   const ranking = [...rows]
     .sort((a, b) => a.indice - b.indice || b.total_ocorrencias - a.total_ocorrencias)
     .slice(0, RANKING_LIMIT)
-    .map((r) => toRankingEntry(r));
+    .map((r) => toRankingEntry(r, registryByKey));
 
   return { totals, porBase, ranking };
 }
@@ -94,12 +109,12 @@ export async function getDriverOccurrenceHistory(driverId: string, limit = HISTO
   }));
 }
 
-function toRankingEntry(r: DashboardRow) {
+function toRankingEntry(r: DashboardRow, registryByKey: Map<string, string>) {
   return {
     driverId: r.driver_id,
     code: r.code,
     name: r.name,
-    base: r.base,
+    base: canonicalBaseLabel(r.base, registryByKey),
     totalOcorrencias: r.total_ocorrencias,
     reincidencias: r.reincidencias,
     indice: r.indice,
