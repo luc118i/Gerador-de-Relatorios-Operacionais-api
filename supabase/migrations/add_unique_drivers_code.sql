@@ -1,0 +1,12 @@
+-- Unicidade da matrícula (code) do motorista.
+--
+-- POST /drivers/upsert usa .upsert(..., { onConflict: "code" }) para o GAS
+-- sincronizar motoristas da planilha e para o app reativar motorista sem
+-- endpoint dedicado. Sem uma constraint UNIQUE casando o onConflict, o
+-- PostgREST devolve 42P10 ("there is no unique or exclusion constraint
+-- matching the ON CONFLICT specification") e o upsert falha com HTTP 500.
+--
+-- Verificado em 2026-09-03: 975 linhas, 0 code nulo/vazio, 0 duplicado —
+-- a constraint entra sem limpeza de dados. lookupDriverByCode já assume
+-- code único entre ativos (.maybeSingle()); isto formaliza para toda a tabela.
+ALTER TABLE drivers ADD CONSTRAINT drivers_code_key UNIQUE (code);
