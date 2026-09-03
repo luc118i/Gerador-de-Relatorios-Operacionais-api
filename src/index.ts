@@ -5,6 +5,7 @@ import { registerRoutes } from "./core/http/router.js";
 import { errorHandler } from "./core/http/errorHandler.js";
 import { ENV } from "./core/config/env.js";
 import { locaisRoutes } from "./modules/locais/locais.routes.js";
+import { canonBase, stripDiacritics } from "./shared/normalizer/index.js";
 
 // 2. Middlewares de Configuração (OBRIGATÓRIO ANTES DAS ROTAS)
 app.use(express.json());
@@ -23,6 +24,17 @@ app.get("/", (_, res) =>
 );
 
 app.get("/health", (_, res) => res.json({ ok: true }));
+
+// Diagnostico temporario: confirma qual build de normalizer esta rodando.
+app.get("/_diag/normalizer", (_, res) =>
+  res.json({
+    commit: process.env.KOYEB_GIT_SHA ?? process.env.GIT_SHA ?? null,
+    node: process.version,
+    icuNormalizeWorks: "é".normalize("NFD").length === 2,
+    stripDiacritics: stripDiacritics("São José brasília"),
+    canonBase: canonBase("  são josé dos campos  "),
+  }),
+);
 
 // 4. Tratamento de Erros (SEMPRE DEPOIS DAS ROTAS)
 app.use(errorHandler);
