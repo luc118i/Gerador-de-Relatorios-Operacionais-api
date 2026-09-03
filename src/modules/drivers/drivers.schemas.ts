@@ -34,3 +34,27 @@ export const updateDriverSchema = z
   });
 
 export type UpdateDriverInput = z.infer<typeof updateDriverSchema>;
+
+// Match em lote: recebe uma lista de motoristas (matrícula e/ou nome, ex.:
+// linhas da planilha do iButton) e devolve, para cada um, o registro do
+// banco com o telefone. Usado pra "puxar os números" de uma base inteira
+// sem N requests ao /drivers/lookup.
+export const matchDriversSchema = z.object({
+  items: z
+    .array(
+      z
+        .object({
+          code: z.string().trim().min(1).optional(),
+          name: z.string().trim().min(1).optional(),
+        })
+        .refine((i) => !!i.code || !!i.name, {
+          message: "Cada item precisa de code ou name.",
+        }),
+    )
+    .min(1)
+    .max(2000),
+  includeInactive: z.boolean().optional().default(false),
+});
+
+export type MatchDriversInput = z.infer<typeof matchDriversSchema>;
+export type MatchDriverItem = MatchDriversInput["items"][number];

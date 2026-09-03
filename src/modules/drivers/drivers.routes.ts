@@ -2,6 +2,7 @@
 import type { Express } from "express";
 import {
   createDriverSchema,
+  matchDriversSchema,
   searchDriversSchema,
   updateDriverSchema,
   type UpdateDriverInput,
@@ -11,6 +12,7 @@ import {
   listDrivers,
   lookupDriver,
   getDriver,
+  matchDrivers,
   updateDriver,
   deleteDriver,
   upsertDriver,
@@ -74,6 +76,19 @@ export function driversRoutes(app: Express) {
         phone: payloadRaw.phone ?? null,
       });
       res.status(200).json(driver);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // Match em lote: recebe { items: [{ code?, name? }], includeInactive? } e
+  // devolve, para cada item, o motorista do banco com telefone. Serve pra
+  // "puxar os números" de uma base inteira da planilha do iButton em 1 request.
+  app.post("/drivers/match", async (req, res, next) => {
+    try {
+      const parsed = matchDriversSchema.parse(req.body);
+      const out = await matchDrivers(parsed.items, parsed.includeInactive);
+      res.json({ data: out });
     } catch (err) {
       next(err);
     }

@@ -7,7 +7,12 @@ import {
   deleteDriverRepo,
   upsertDriverRepo,
   getDriverTratativaCounts,
+  findDriversByCodes,
+  getAllDriversForMatch,
+  type MatchDriverRow,
 } from "./drivers.repo.js";
+import { normalizeText } from "../../shared/normalizer/index.js";
+import type { MatchDriverItem } from "./drivers.schemas.js";
 
 const MESES = [
   "janeiro", "fevereiro", "março", "abril", "maio", "junho",
@@ -148,6 +153,134 @@ export async function getDriverStats(driverId: string) {
     suspensao: counts.suspensao,
     total: counts.total,
     periodLabel: `${MESES[now.getMonth()]}/${now.getFullYear()}`,
+  };
+}
+
+const normCode = (c: string) => c.trim().toUpperCase();
+
+function shapeMatch(r: MatchDriverRow) {
+  return {
+    id: r.id,
+    code: r.code,
+    name: r.name,
+    base: r.base,
+    phone: r.phone,
+    active: r.active,
+  };
+}
+
+// Match em lote de motoristas (matrícula e/ou nome) -> registro do banco
+// com telefone. Estratégia por item: (1) matrícula exata; (2) matrícula
+// ignorando zeros à esquerda, só se resolver pra um único motorista;
+// (3) nome normalizado (sem acento/caixa), só se único. Empates viram
+// `ambiguous` e não escolhem ninguém.
+export async function matchDrivers(
+  items: MatchDriverItem[],
+  includeInactive: boolean,
+) {
+  // Envia a matrícula normalizada E a variante sem zeros à esquerda, pra
+  // casar nos dois sentidos (planilha guarda "00030", banco pode ter "30"
+  // ou vice-versa — o /drivers/upsert só faz trim).
+  const codes = Array.from(
+    new Set(
+      items
+        .flatMap((i) => {
+          if (!i.code) return [];
+          const c = normCode(i.code);
+          const loose = c.replace(/^0+/, "");
+          return loose && loose !== c ? [c, loose] : [c];
+        })
+        .filter(Boolean),
+    ),
+  );
+
+  const byCodeRows = await findDriversByCodes(codes, includeInactive);
+
+  const codeMap = new Map<string, MatchDriverRow[]>();
+  const looseCodeMap = new Map<string, MatchDriverRow[]>();
+  for (const r of byCodeRows) {
+    const k = normCode(r.code);
+    (codeMap.get(k) ?? codeMap.set(k, []).get(k)!).push(r);
+
+    const loose = k.replace(/^0+/, "");
+    if (loose) {
+      (looseCodeMap.get(loose) ?? looseCodeMap.set(loose, []).get(loose)!).push(r);
+    }
+  }
+
+  const codeResolves = (code?: string) => {
+    if (!code) return false;
+    const c = normCode(code);
+    if ((codeMap.get(c)?.length ?? 0) === 1) return true;
+    const loose = c.replace(/^0+/, "");
+    return loose !== c && (looseCodeMap.get(loose)?.length ?? 0) === 1;
+  };
+
+  // Só carrega a tabela inteira se sobrar `name` sem match por matrícula.
+  const needsNameIndex = items.some((i) => i.name && !codeResolves(i.code));
+
+  let nameMap: Map<string, MatchDriverRow[]> | null = null;
+  if (needsNameIndex) {
+    const all = await getAllDriversForMatch(includeInactive);
+    nameMap = new Map();
+    for (const r of all) {
+      const k = normalizeText(r.name);
+      (nameMap.get(k) ?? nameMap.set(k, []).get(k)!).push(r);
+    }
+  }
+
+  let matched = 0;
+  let byCode = 0;
+  let byName = 0;
+  let ambiguous = 0;
+
+  const results = items.map((input, index) => {
+    if (input.code) {
+      const exact = codeMap.get(normCode(input.code));
+      if (exact && exact.length === 1) {
+        matched++;
+        byCode++;
+        return { index, input, matched: true, matchedBy: "code", driver: shapeMatch(exact[0]!) };
+      }
+      if (exact && exact.length > 1) {
+        ambiguous++;
+        return { index, input, matched: false, ambiguous: true, reason: "várias matrículas iguais" };
+      }
+
+      const loose = looseCodeMap.get(normCode(input.code).replace(/^0+/, ""));
+      if (loose && loose.length === 1) {
+        matched++;
+        byCode++;
+        return { index, input, matched: true, matchedBy: "code-loose", driver: shapeMatch(loose[0]!) };
+      }
+    }
+
+    if (input.name && nameMap) {
+      const hit = nameMap.get(normalizeText(input.name));
+      if (hit && hit.length === 1) {
+        matched++;
+        byName++;
+        return { index, input, matched: true, matchedBy: "name", driver: shapeMatch(hit[0]!) };
+      }
+      if (hit && hit.length > 1) {
+        ambiguous++;
+        return { index, input, matched: false, ambiguous: true, reason: "vários motoristas com o mesmo nome" };
+      }
+    }
+
+    return { index, input, matched: false };
+  });
+
+  return {
+    results,
+    summary: {
+      total: items.length,
+      matched,
+      unmatched: items.length - matched,
+      byCode,
+      byName,
+      ambiguous,
+    },
   };
 }
 

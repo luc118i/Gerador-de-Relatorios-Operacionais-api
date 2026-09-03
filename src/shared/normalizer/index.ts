@@ -1,1 +1,1 @@
-export { normalizeText, textsMatch, textContains } from "./text-normalizer.js";
+export { normalizeText, textsMatch, textContains, canonBase } from "./text-normalizer.js";

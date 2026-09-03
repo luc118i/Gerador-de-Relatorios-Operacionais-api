@@ -1,5 +1,6 @@
 // src/modules/drivers/drivers.repo.ts
 import { supabaseAdmin } from "../../core/infra/supabaseAdmin.js";
+import { canonBase } from "../../shared/normalizer/index.js";
 
 export async function searchDrivers(args: {
   search?: string;
@@ -75,7 +76,7 @@ export async function insertDriver(args: {
     .insert({
       code: args.code.trim(),
       name: args.name.trim(),
-      base: args.base?.trim() || null,
+      base: canonBase(args.base),
       phone: args.phone?.trim() || null,
       criado_por: args.criadoPor?.trim() || null,
       criado_por_user_id: args.criadoPorId || null,
@@ -111,7 +112,7 @@ export async function updateDriverRepo(args: {
 
   if (args.code !== undefined) payload.code = args.code.trim();
   if (args.name !== undefined) payload.name = args.name.trim();
-  if (args.base !== undefined) payload.base = args.base?.trim() || null;
+  if (args.base !== undefined) payload.base = canonBase(args.base);
   if (args.phone !== undefined) payload.phone = args.phone?.trim() || null;
 
   const { data, error } = await supabaseAdmin
@@ -138,7 +139,7 @@ export async function upsertDriverRepo(args: {
       {
         code: args.code.trim(),
         name: args.name.trim(),
-        base: args.base?.trim() || null,
+        base: canonBase(args.base),
         ...(args.phone !== undefined ? { phone: args.phone?.trim() || null } : {}),
         active: true,
       },
@@ -162,6 +163,73 @@ export async function deleteDriverRepo(id: string) {
   if (error) throw error;
 
   return !!data;
+}
+
+export type MatchDriverRow = {
+  id: string;
+  code: string;
+  name: string;
+  base: string | null;
+  phone: string | null;
+  active: boolean;
+};
+
+// Busca motoristas por uma lista de matrículas (chunked p/ não estourar o
+// tamanho do filtro `in`). Sem filtro de nome aqui — nome é resolvido em
+// memória pelo service via getAllDriversForMatch.
+export async function findDriversByCodes(
+  codes: string[],
+  includeInactive: boolean,
+): Promise<MatchDriverRow[]> {
+  if (codes.length === 0) return [];
+
+  const out: MatchDriverRow[] = [];
+  const CHUNK = 200;
+
+  for (let i = 0; i < codes.length; i += CHUNK) {
+    const slice = codes.slice(i, i + CHUNK);
+    let q = supabaseAdmin
+      .from("drivers")
+      .select("id, code, name, base, phone, active")
+      .in("code", slice);
+
+    if (!includeInactive) q = q.eq("active", true);
+
+    const { data, error } = await q;
+    if (error) throw error;
+    out.push(...((data ?? []) as MatchDriverRow[]));
+  }
+
+  return out;
+}
+
+// Tabela inteira de motoristas (paginada) pra montar índice de nome
+// normalizado em memória. Só chamada quando sobra `name` sem match por
+// matrícula. Volume atual (centenas/poucos milhares) comporta.
+export async function getAllDriversForMatch(
+  includeInactive: boolean,
+): Promise<MatchDriverRow[]> {
+  const out: MatchDriverRow[] = [];
+  const PAGE = 1000;
+
+  for (let from = 0; ; from += PAGE) {
+    let q = supabaseAdmin
+      .from("drivers")
+      .select("id, code, name, base, phone, active")
+      .order("id", { ascending: true })
+      .range(from, from + PAGE - 1);
+
+    if (!includeInactive) q = q.eq("active", true);
+
+    const { data, error } = await q;
+    if (error) throw error;
+
+    const rows = (data ?? []) as MatchDriverRow[];
+    out.push(...rows);
+    if (rows.length < PAGE) break;
+  }
+
+  return out;
 }
 
 // Conta as tratativas do motorista a partir de monthStartISO (mês corrente).
