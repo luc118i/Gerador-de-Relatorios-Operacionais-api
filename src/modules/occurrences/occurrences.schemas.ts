@@ -181,7 +181,6 @@ export const boardQuerySchema = z.object({
   to: dateStr.optional(),
   status: csv,
   prioridade: csv,
-  typeCode: csv,
   baseCode: z.string().trim().optional(),
   driverId: z.string().trim().optional(),
   vehicleNumber: z.string().trim().optional(),

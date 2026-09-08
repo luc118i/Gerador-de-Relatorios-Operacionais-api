@@ -332,7 +332,6 @@ export type BoardFilters = {
   to?: string | undefined; // YYYY-MM-DD (event_date <=) — default: hoje
   status?: string[] | undefined;
   prioridade?: string[] | undefined;
-  typeCode?: string[] | undefined;
   baseCode?: string | undefined;
   driverId?: string | undefined;
   vehicleNumber?: string | undefined;
@@ -374,13 +373,12 @@ export async function listOccurrencesBoard(filters: BoardFilters) {
   const { data, error } = await q;
   if (error) throw error;
 
-  let rows = (data ?? []).map(mapListRow);
+  // A Central trata só ocorrências GENERICO (CCO). Os tipos estruturados
+  // (parada fora, excesso de velocidade/permanência) vivem no fluxo de
+  // relatório / telemetria, não neste quadro.
+  let rows = (data ?? []).map(mapListRow).filter((r) => r.typeCode === "GENERICO");
 
-  // typeCode e driverId dependem de embeds — filtra em memória.
-  if (filters.typeCode?.length) {
-    const set = new Set(filters.typeCode);
-    rows = rows.filter((r) => r.typeCode && set.has(r.typeCode));
-  }
+  // driverId depende de embed — filtra em memória.
   if (filters.driverId) {
     rows = rows.filter((r) => r.drivers.some((d: any) => d.driverId === filters.driverId));
   }
