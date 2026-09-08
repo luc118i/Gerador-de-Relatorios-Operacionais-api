@@ -5,6 +5,7 @@ import {
   insertPoints,
   listOccurrencesByDay,
   listOccurrencesBoard,
+  getOccurrenceById,
   getBaseCodeFromOccurrenceDriver,
   updateOccurrenceBaseCode,
   getDriverBaseById,
@@ -342,6 +343,56 @@ export async function getOccurrencesByDay(date: string) {
 
 export async function getBoard(filters: BoardFilters) {
   return listOccurrencesBoard(filters);
+}
+
+/** Duplica uma ocorrência: cópia nova em PENDENTE, sem tratativa/responsável/
+ *  relatório (rizer/drive não são copiados por `createOccurrence`). */
+export async function duplicateOccurrence(id: string) {
+  const src: any = await getOccurrenceById(id);
+  if (!src) throw new Error("Ocorrência não encontrada");
+
+  const drivers = (src.drivers ?? [])
+    .filter((d: any) => d.driverId || d.name)
+    .map((d: any) => ({
+      position: d.position as 1 | 2,
+      driverId: d.driverId ?? undefined,
+      name: d.name ?? undefined,
+      registry: d.registry ?? undefined,
+      baseCode: d.baseCode ?? undefined,
+    }));
+
+  const result = await createOccurrence({
+    typeCode: src.typeCode,
+    origin: src.origin ?? "REPORT",
+    eventDate: src.eventDate,
+    tripDate: src.tripDate ?? src.eventDate,
+    startTime: src.startTime ?? "00:00",
+    endTime: src.endTime ?? src.startTime ?? "00:00",
+    vehicleNumber: src.vehicleNumber,
+    baseCode: src.baseCode || undefined,
+    lineLabel: src.lineLabel ?? null,
+    tripId: src.tripId ?? undefined,
+    place: src.place ?? "",
+    drivers,
+    showSectionTripulacao: drivers.length > 0,
+    showSectionViagem: src.showSectionViagem ?? true,
+    showSectionPassageiros: src.showSectionPassageiros ?? true,
+    reportTitle: src.reportTitle ?? null,
+    occurrenceName: src.occurrenceName ?? null,
+    relatoHtml: src.relatoHtml ?? null,
+    prioridade: src.prioridade ?? "MEDIA",
+    workflowStatus: "PENDENTE",
+    tratativa: null,
+    analisadoPor: null,
+    analisadoPorUserId: null,
+  });
+
+  const newId = typeof result === "string" ? result : result.id;
+  await insertHistory(newId, {
+    action: "NOTA",
+    note: `Duplicada de #${id.slice(0, 8)}`,
+  }).catch(() => {});
+  return { id: newId };
 }
 
 /** Escapa texto pra ir dentro de um <p> no relato_html. */

@@ -16,6 +16,7 @@ import {
   changeStatus,
   changePrioridade,
   importOccurrences,
+  duplicateOccurrence,
 } from "./occurrences.service.js";
 
 import {
@@ -77,6 +78,16 @@ export function occurrencesRoutes(app: Express) {
     try {
       const payload = importOccurrencesSchema.parse(req.body);
       const data = await importOccurrences(payload);
+      res.status(201).json({ data });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // Duplicar ocorrência (menu de contexto da Central).
+  app.post("/occurrences/:id/duplicate", async (req, res, next) => {
+    try {
+      const data = await duplicateOccurrence(req.params.id);
       res.status(201).json({ data });
     } catch (err) {
       next(err);
