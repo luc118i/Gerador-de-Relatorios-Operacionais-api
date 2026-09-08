@@ -40,21 +40,19 @@ export function centralSettingsRoutes(app: Express) {
   // Ajuste fino da capa (enquadramento vertical + opacidade) — sem reenviar imagem.
   app.patch("/central/cover", async (req, res, next) => {
     try {
-      const body = (req.body ?? {}) as { posY?: unknown; opacity?: unknown };
-      const patch: { posY?: number; opacity?: number } = {};
-      if (body.posY !== undefined) {
-        const n = Number(body.posY);
+      const body = (req.body ?? {}) as {
+        posY?: unknown;
+        opacity?: unknown;
+        zoom?: unknown;
+      };
+      const patch: { posY?: number; opacity?: number; zoom?: number } = {};
+      for (const key of ["posY", "opacity", "zoom"] as const) {
+        if (body[key] === undefined) continue;
+        const n = Number(body[key]);
         if (!Number.isFinite(n)) {
-          return res.status(400).json({ error: "posY inválido" });
+          return res.status(400).json({ error: `${key} inválido` });
         }
-        patch.posY = n;
-      }
-      if (body.opacity !== undefined) {
-        const n = Number(body.opacity);
-        if (!Number.isFinite(n)) {
-          return res.status(400).json({ error: "opacity inválido" });
-        }
-        patch.opacity = n;
+        patch[key] = n;
       }
       const updatedBy = String(req.body?.actorNome ?? "").trim() || null;
       res.json({ data: await patchCover(patch, updatedBy) });

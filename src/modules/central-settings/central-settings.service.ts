@@ -13,6 +13,7 @@ const DEFAULT_POS_Y = 50; // 0 = topo, 100 = base
 const DEFAULT_OPACITY = 0.16;
 const MIN_OPACITY = 0.03;
 const MAX_OPACITY = 0.5;
+const DEFAULT_ZOOM = 1; // 1 = preenche a faixa; 0 = imagem inteira (menos zoom)
 
 export type CoverResult = {
   url: string | null;
@@ -21,6 +22,8 @@ export type CoverResult = {
   posY: number;
   /** opacidade da imagem no quadro (0–1) */
   opacity: number;
+  /** zoom: 1 = preenche a faixa, 0 = imagem inteira */
+  zoom: number;
 };
 
 const clamp = (n: number, lo: number, hi: number) =>
@@ -44,6 +47,7 @@ function toResult(
       MIN_OPACITY,
       MAX_OPACITY,
     ),
+    zoom: clamp(readNum(value?.zoom, DEFAULT_ZOOM), 0, 1),
   };
 }
 
@@ -66,14 +70,19 @@ export async function setCover(
 ): Promise<CoverResult> {
   await clearCoverFiles();
   const url = await uploadCoverFile(buffer, contentType);
-  // imagem nova → volta o enquadramento/opacidade pro padrão
-  const value = { url, posY: DEFAULT_POS_Y, opacity: DEFAULT_OPACITY };
+  // imagem nova → volta enquadramento/opacidade/zoom pro padrão
+  const value = {
+    url,
+    posY: DEFAULT_POS_Y,
+    opacity: DEFAULT_OPACITY,
+    zoom: DEFAULT_ZOOM,
+  };
   await upsertSetting(COVER_KEY, value, updatedBy);
   return toResult(value, new Date().toISOString());
 }
 
 export async function patchCover(
-  patch: { posY?: number; opacity?: number },
+  patch: { posY?: number; opacity?: number; zoom?: number },
   updatedBy: string | null,
 ): Promise<CoverResult> {
   const row = await getSetting(COVER_KEY);
@@ -86,6 +95,7 @@ export async function patchCover(
   if (patch.opacity !== undefined) {
     next.opacity = clamp(patch.opacity, MIN_OPACITY, MAX_OPACITY);
   }
+  if (patch.zoom !== undefined) next.zoom = clamp(patch.zoom, 0, 1);
   await upsertSetting(COVER_KEY, next, updatedBy);
   return toResult(next, new Date().toISOString());
 }
