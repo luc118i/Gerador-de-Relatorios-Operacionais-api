@@ -1,10 +1,19 @@
 import type { Express } from "express";
 
-import { createOccurrenceSchema } from "./occurrences.schemas.js";
+import {
+  createOccurrenceSchema,
+  boardQuerySchema,
+  patchStatusSchema,
+  patchPrioridadeSchema,
+} from "./occurrences.schemas.js";
 import {
   createOccurrence,
   updateOccurrence,
   getOccurrencesByDay,
+  getBoard,
+  getOccurrenceHistory,
+  changeStatus,
+  changePrioridade,
 } from "./occurrences.service.js";
 
 import {
@@ -50,6 +59,17 @@ export function occurrencesRoutes(app: Express) {
     }
   });
 
+  // Quadro da Central de Ocorrências: range em event_date + filtros. Must be before /:id.
+  app.get("/occurrences/board", async (req, res, next) => {
+    try {
+      const filters = boardQuerySchema.parse(req.query);
+      const data = await getBoard(filters);
+      res.json({ data });
+    } catch (err) {
+      next(err);
+    }
+  });
+
   // Consumido pelo painel de ocorrências (Google Apps Script / Notion): dado
   // o link do Drive salvo em cada ocorrência (ver saveRizerData), devolve
   // motorista(s) + base — usado quando o campo "Arquivo" no Notion só tem o
@@ -91,6 +111,45 @@ export function occurrencesRoutes(app: Express) {
       const payload = createOccurrenceSchema.parse(req.body);
       await updateOccurrence(id, payload);
       res.json({ success: true });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // Timeline de auditoria da ocorrência (Central de Ocorrências).
+  app.get("/occurrences/:id/history", async (req, res, next) => {
+    try {
+      const data = await getOccurrenceHistory(req.params.id);
+      res.json({ data });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // Troca o estado no quadro da Central + grava a mudança na timeline.
+  app.patch("/occurrences/:id/status", async (req, res, next) => {
+    try {
+      const { workflowStatus, note, actorUserId, actorNome } = patchStatusSchema.parse(req.body);
+      const result = await changeStatus(req.params.id, workflowStatus, {
+        note: note ?? null,
+        actorUserId: actorUserId ?? null,
+        actorNome: actorNome ?? null,
+      });
+      res.json({ data: result });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // Troca a prioridade + grava a mudança na timeline.
+  app.patch("/occurrences/:id/prioridade", async (req, res, next) => {
+    try {
+      const { prioridade, actorUserId, actorNome } = patchPrioridadeSchema.parse(req.body);
+      const result = await changePrioridade(req.params.id, prioridade, {
+        actorUserId: actorUserId ?? null,
+        actorNome: actorNome ?? null,
+      });
+      res.json({ data: result });
     } catch (err) {
       next(err);
     }

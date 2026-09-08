@@ -60,6 +60,16 @@ export const createOccurrenceSchema = z.object({
     .max(2),
 
   tratativa: z.enum(["SUSPEICAO", "ADVERTENCIA", "VALE", "REGISTRO"]).optional().nullable(),
+
+  // Central de Ocorrências: estado no quadro e prioridade. Ambos opcionais — o
+  // backend deriva o status inicial (PENDENTE, ou EM_TRATAMENTO quando já vem
+  // com tratativa) e assume MEDIA quando a prioridade não é enviada.
+  workflowStatus: z
+    .enum(["PENDENTE", "EM_TRATAMENTO", "AGUARDANDO_RETORNO", "TRATADA", "CANCELADA", "ARQUIVADA"])
+    .optional()
+    .nullable(),
+  prioridade: z.enum(["CRITICA", "ALTA", "MEDIA", "BAIXA"]).optional().nullable(),
+
   analisadoPor: z.string().trim().optional().nullable(),
   // Vínculo best-effort com o usuário logado no app quando `analisadoPor` foi
   // definido por ele (não validado por JWT — ver migração
@@ -144,4 +154,58 @@ export const createOccurrenceSchema = z.object({
       message: "Não é permitido repetir o mesmo motorista.",
     });
   }
+});
+
+// ── Central de Ocorrências ────────────────────────────────────────────────
+
+/** Lista separada por vírgula → array de strings não-vazias (query string). */
+const csv = z
+  .string()
+  .optional()
+  .transform((v) =>
+    (v ?? "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean),
+  );
+
+const dateStr = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "data deve ser YYYY-MM-DD");
+
+/** Filtros do quadro (GET /occurrences/board). Período incide sobre event_date. */
+export const boardQuerySchema = z.object({
+  from: dateStr.optional(),
+  to: dateStr.optional(),
+  status: csv,
+  prioridade: csv,
+  typeCode: csv,
+  baseCode: z.string().trim().optional(),
+  driverId: z.string().trim().optional(),
+  vehicleNumber: z.string().trim().optional(),
+  lineLabel: z.string().trim().optional(),
+  responsavel: z.string().trim().optional(),
+  hasReport: z.enum(["true", "false"]).optional(),
+  search: z.string().trim().optional(),
+});
+
+const ACTOR = {
+  actorUserId: z.string().uuid().optional().nullable(),
+  actorNome: z.string().trim().optional().nullable(),
+};
+
+export const patchStatusSchema = z.object({
+  workflowStatus: z.enum([
+    "PENDENTE",
+    "EM_TRATAMENTO",
+    "AGUARDANDO_RETORNO",
+    "TRATADA",
+    "CANCELADA",
+    "ARQUIVADA",
+  ]),
+  note: z.string().trim().optional().nullable(),
+  ...ACTOR,
+});
+
+export const patchPrioridadeSchema = z.object({
+  prioridade: z.enum(["CRITICA", "ALTA", "MEDIA", "BAIXA"]),
+  ...ACTOR,
 });

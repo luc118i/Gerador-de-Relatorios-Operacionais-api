@@ -171,15 +171,9 @@ function mapPointRows(rows: any): Array<{
     }));
 }
 
-/** listar por dia com drivers + evidences (count) + type */
-export async function listOccurrencesByDay(date: string) {
-  const startUTC = new Date(`${date}T00:00:00`).toISOString(); // Converte para UTC
-  const endUTC = new Date(`${date}T23:59:59`).toISOString(); // Converte para UTC
-
-  const { data, error } = await supabaseAdmin
-    .from("occurrences")
-    .select(
-      `
+// Colunas + embeds usados pelas listagens (por dia e pelo quadro da Central).
+// Mantido como const único pra as duas consultas não desincronizarem.
+const LIST_OCCURRENCE_SELECT = `
       id,
       event_date,
       trip_date,
@@ -218,6 +212,8 @@ export async function listOccurrencesByDay(date: string) {
       suspensao,
       falta_tratativa,
       tratativa,
+      workflow_status,
+      prioridade,
       analisado_por,
       analisado_por_user_id,
       justificativa_registro,
@@ -231,15 +227,11 @@ export async function listOccurrencesByDay(date: string) {
       occurrence_evidences (id),
       occurrence_points (seq, place, start_time, end_time, permanencia_min, permitido_min, excedente_min),
       suspensoes (data_inicio, dias)
-    `,
-    )
-    .gte("created_at", startUTC) // Utiliza UTC para a consulta
-    .lte("created_at", endUTC)
-    .order("created_at", { ascending: false });
+    `;
 
-  if (error) throw error;
-
-  return (data ?? []).map((o: any) => ({
+/** Mapa row → DTO usado pelas listagens (por dia e pelo quadro da Central). */
+function mapListRow(o: any) {
+  return {
     id: o.id,
     typeCode: o.occurrence_types?.code ?? null,
     typeTitle: o.occurrence_types?.title ?? null,
@@ -301,6 +293,8 @@ export async function listOccurrencesByDay(date: string) {
     suspensaoDisciplinar: o.suspensao ?? false,
     faltaTratativa: o.falta_tratativa ?? false,
     tratativa: o.tratativa ?? null,
+    workflowStatus: o.workflow_status ?? "PENDENTE",
+    prioridade: o.prioridade ?? "MEDIA",
     analisadoPor: o.analisado_por ?? null,
     analisadoPorUserId: o.analisado_por_user_id ?? null,
     justificativaRegistro: o.justificativa_registro ?? null,
@@ -308,7 +302,106 @@ export async function listOccurrencesByDay(date: string) {
     whatsappLastSentD1At: o.whatsapp_last_sent_1_at ?? null,
     whatsappSentCountD2: o.whatsapp_sent_count_2 ?? 0,
     whatsappLastSentD2At: o.whatsapp_last_sent_2_at ?? null,
-  }));
+  };
+}
+
+/** listar por dia (por created_at) com drivers + evidences (count) + type */
+export async function listOccurrencesByDay(date: string) {
+  const startUTC = new Date(`${date}T00:00:00`).toISOString(); // Converte para UTC
+  const endUTC = new Date(`${date}T23:59:59`).toISOString(); // Converte para UTC
+
+  const { data, error } = await supabaseAdmin
+    .from("occurrences")
+    .select(LIST_OCCURRENCE_SELECT)
+    .gte("created_at", startUTC) // Utiliza UTC para a consulta
+    .lte("created_at", endUTC)
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+
+  return (data ?? []).map(mapListRow);
+}
+
+export type BoardFilters = {
+  from?: string | undefined; // YYYY-MM-DD (event_date >=) — default: hoje - 30
+  to?: string | undefined; // YYYY-MM-DD (event_date <=) — default: hoje
+  status?: string[] | undefined;
+  prioridade?: string[] | undefined;
+  typeCode?: string[] | undefined;
+  baseCode?: string | undefined;
+  driverId?: string | undefined;
+  vehicleNumber?: string | undefined;
+  lineLabel?: string | undefined;
+  responsavel?: string | undefined;
+  hasReport?: "true" | "false" | undefined;
+  search?: string | undefined;
+};
+
+/** Quadro da Central de Ocorrências: range em event_date + filtros. Mesmo
+ * shape de linha que listOccurrencesByDay (mapListRow). Sem paginação na
+ * Fase 1 — o range default (30 dias) mantém o volume administrável. */
+export async function listOccurrencesBoard(filters: BoardFilters) {
+  const today = new Date();
+  const iso = (d: Date) => d.toISOString().slice(0, 10);
+  const defFrom = new Date(today);
+  defFrom.setDate(defFrom.getDate() - 30);
+
+  const from = filters.from ?? iso(defFrom);
+  const to = filters.to ?? iso(today);
+
+  let q = supabaseAdmin
+    .from("occurrences")
+    .select(LIST_OCCURRENCE_SELECT)
+    .gte("event_date", from)
+    .lte("event_date", to);
+
+  if (filters.status?.length) q = q.in("workflow_status", filters.status);
+  if (filters.prioridade?.length) q = q.in("prioridade", filters.prioridade);
+  if (filters.baseCode) q = q.ilike("base_code", `%${filters.baseCode}%`);
+  if (filters.vehicleNumber) q = q.ilike("vehicle_number", `%${filters.vehicleNumber}%`);
+  if (filters.lineLabel) q = q.ilike("line_label", `%${filters.lineLabel}%`);
+  if (filters.responsavel) q = q.ilike("analisado_por", `%${filters.responsavel}%`);
+  if (filters.hasReport === "true") q = q.not("drive_web_view_link", "is", null);
+  if (filters.hasReport === "false") q = q.is("drive_web_view_link", null);
+
+  q = q.order("created_at", { ascending: false });
+
+  const { data, error } = await q;
+  if (error) throw error;
+
+  let rows = (data ?? []).map(mapListRow);
+
+  // typeCode e driverId dependem de embeds — filtra em memória.
+  if (filters.typeCode?.length) {
+    const set = new Set(filters.typeCode);
+    rows = rows.filter((r) => r.typeCode && set.has(r.typeCode));
+  }
+  if (filters.driverId) {
+    rows = rows.filter((r) => r.drivers.some((d: any) => d.driverId === filters.driverId));
+  }
+  if (filters.search) {
+    const norm = (s: string) =>
+      s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+    const terms = norm(filters.search).split(/\s+/).filter(Boolean);
+    rows = rows.filter((r) => {
+      const hay = norm(
+        [
+          r.vehicleNumber,
+          r.lineLabel ?? "",
+          r.typeTitle ?? "",
+          r.reportTitle ?? "",
+          r.occurrenceName ?? "",
+          r.place ?? "",
+          r.baseCode ?? "",
+          r.id,
+          ...(r.drivers ?? []).flatMap((d: any) => [d.registry, d.name]),
+        ].join(" "),
+      );
+      return terms.every((t) => hay.includes(t));
+    });
+  }
+
+  return rows;
 }
 
 export async function getBaseCodeFromOccurrenceDriver(occurrenceId: string) {
@@ -386,6 +479,8 @@ export async function getOccurrenceById(id: string) {
       suspensao,
       falta_tratativa,
       tratativa,
+      workflow_status,
+      prioridade,
       analisado_por,
       analisado_por_user_id,
       whatsapp_sent_count_1,
@@ -484,6 +579,8 @@ export async function getOccurrenceById(id: string) {
     suspensaoDisciplinar: o.suspensao ?? false,
     faltaTratativa: o.falta_tratativa ?? false,
     tratativa: o.tratativa ?? null,
+    workflowStatus: o.workflow_status ?? "PENDENTE",
+    prioridade: o.prioridade ?? "MEDIA",
     analisadoPor: o.analisado_por ?? null,
     analisadoPorUserId: o.analisado_por_user_id ?? null,
     whatsappSentCountD1: o.whatsapp_sent_count_1 ?? 0,
@@ -695,6 +792,8 @@ export async function updateOccurrenceData(id: string, data: any) {
       show_section_passageiros: data.show_section_passageiros ?? true,
       devolutiva_before_evidences: data.devolutiva_before_evidences ?? false,
       tratativa: data.tratativa ?? null,
+      // Só sobrescreve prioridade quando o payload a envia (undefined = mantém).
+      ...(data.prioridade != null ? { prioridade: data.prioridade } : {}),
       analisado_por: data.analisado_por ?? null,
       analisado_por_user_id: data.analisado_por_user_id ?? null,
       pdf_url: null,
@@ -853,6 +952,123 @@ export async function updateTratativa(
     .update(metaUpdate)
     .eq("id", id);
   if (error) throw error;
+
+  // Timeline da Central (best-effort — não derruba a tratativa se falhar).
+  await insertHistory(id, {
+    actorNome: analisadoPor ?? null,
+    actorUserId: analisadoPorUserId ?? null,
+    action: "TRATATIVA",
+    toValue: tratativa,
+    note: justificativaRegistro ?? null,
+  }).catch((e) => console.warn("[updateTratativa] history falhou:", e));
+}
+
+// ── Central de Ocorrências: workflow_status, prioridade e timeline ─────────
+
+export type HistoryActor = {
+  actorUserId?: string | null;
+  actorNome?: string | null;
+};
+
+export type HistoryEntryInput = HistoryActor & {
+  action: "CRIADA" | "STATUS" | "PRIORIDADE" | "TRATATIVA" | "RELATORIO" | "NOTA";
+  fromValue?: string | null;
+  toValue?: string | null;
+  note?: string | null;
+};
+
+/** Grava uma linha na timeline da ocorrência (append-only). */
+export async function insertHistory(occurrenceId: string, entry: HistoryEntryInput) {
+  const { error } = await supabaseAdmin.from("occurrence_history").insert({
+    occurrence_id: occurrenceId,
+    actor_user_id: entry.actorUserId ?? null,
+    actor_nome: entry.actorNome ?? null,
+    action: entry.action,
+    from_value: entry.fromValue ?? null,
+    to_value: entry.toValue ?? null,
+    note: entry.note ?? null,
+  });
+  if (error) throw error;
+}
+
+export async function listHistory(occurrenceId: string) {
+  const { data, error } = await supabaseAdmin
+    .from("occurrence_history")
+    .select("id, created_at, actor_user_id, actor_nome, action, from_value, to_value, note")
+    .eq("occurrence_id", occurrenceId)
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return (data ?? []).map((h: any) => ({
+    id: h.id,
+    createdAt: h.created_at,
+    actorUserId: h.actor_user_id ?? null,
+    actorNome: h.actor_nome ?? null,
+    action: h.action as string,
+    fromValue: h.from_value ?? null,
+    toValue: h.to_value ?? null,
+    note: h.note ?? null,
+  }));
+}
+
+async function getOccurrenceField(id: string, field: "workflow_status" | "prioridade") {
+  const { data, error } = await supabaseAdmin
+    .from("occurrences")
+    .select(field)
+    .eq("id", id)
+    .single();
+  if (error) throw error;
+  return (data as any)?.[field] as string | null;
+}
+
+/** Troca o estado no quadro + grava a mudança na timeline. No-op se já está
+ * no status pedido (não polui o histórico com linhas repetidas). */
+export async function updateWorkflowStatus(
+  id: string,
+  status: string,
+  actor: HistoryActor & { note?: string | null },
+) {
+  const current = await getOccurrenceField(id, "workflow_status");
+  if (current === status) return { changed: false, from: current };
+
+  const { error } = await supabaseAdmin
+    .from("occurrences")
+    .update({ workflow_status: status })
+    .eq("id", id);
+  if (error) throw error;
+
+  await insertHistory(id, {
+    actorUserId: actor.actorUserId ?? null,
+    actorNome: actor.actorNome ?? null,
+    action: "STATUS",
+    fromValue: current,
+    toValue: status,
+    note: actor.note ?? null,
+  });
+  return { changed: true, from: current };
+}
+
+export async function updatePrioridade(
+  id: string,
+  prioridade: string,
+  actor: HistoryActor,
+) {
+  const current = await getOccurrenceField(id, "prioridade");
+  if (current === prioridade) return { changed: false, from: current };
+
+  const { error } = await supabaseAdmin
+    .from("occurrences")
+    .update({ prioridade })
+    .eq("id", id);
+  if (error) throw error;
+
+  await insertHistory(id, {
+    actorUserId: actor.actorUserId ?? null,
+    actorNome: actor.actorNome ?? null,
+    action: "PRIORIDADE",
+    fromValue: current,
+    toValue: prioridade,
+  });
+  return { changed: true, from: current };
 }
 
 export async function listReportTitles(): Promise<string[]> {

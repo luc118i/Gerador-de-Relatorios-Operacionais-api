@@ -4,12 +4,19 @@ import {
   insertDrivers,
   insertPoints,
   listOccurrencesByDay,
+  listOccurrencesBoard,
   getBaseCodeFromOccurrenceDriver,
   updateOccurrenceBaseCode,
   getDriverBaseById,
   updateOccurrenceData,
   getDriverSnapshotByOccurrence,
   getLocalIdByNome,
+  insertHistory,
+  listHistory,
+  updateWorkflowStatus,
+  updatePrioridade,
+  type BoardFilters,
+  type HistoryActor,
 } from "./occurrences.repo.js";
 
 import { fetchTripById } from "../trips/trips.repo.js";
@@ -138,12 +145,25 @@ export async function createOccurrence(payload: any) {
     show_section_passageiros: payload.showSectionPassageiros ?? true,
     devolutiva_before_evidences: payload.devolutivaBeforeEvidences ?? false,
     tratativa: payload.tratativa ?? null,
+    // Central de Ocorrências: estado inicial no quadro. Sem valor explícito,
+    // nasce EM_TRATAMENTO quando já vem com uma tratativa, senão PENDENTE.
+    workflow_status:
+      payload.workflowStatus ?? (payload.tratativa ? "EM_TRATAMENTO" : "PENDENTE"),
+    prioridade: payload.prioridade ?? "MEDIA",
     analisado_por: payload.analisadoPor ?? null,
     analisado_por_user_id: payload.analisadoPorUserId ?? null,
   });
 
   // 2) cria vínculos (trigger preenche snapshot)
   await insertDrivers(id, drivers);
+
+  // Primeira linha da timeline da Central (best-effort).
+  await insertHistory(id, {
+    actorNome: payload.analisadoPor ?? null,
+    actorUserId: payload.analisadoPorUserId ?? null,
+    action: "CRIADA",
+    toValue: payload.workflowStatus ?? (payload.tratativa ? "EM_TRATAMENTO" : "PENDENTE"),
+  }).catch((e) => console.warn("[createOccurrence] history falhou:", e));
 
   // 3) opcional: se quiser “garantir” que bate com o snapshot do motorista 01
   const snapshotBase = await getBaseCodeFromOccurrenceDriver(id);
@@ -317,6 +337,32 @@ export async function getOccurrencesByDay(date: string) {
   return listOccurrencesByDay(date);
 }
 
+// ── Central de Ocorrências ────────────────────────────────────────────────
+
+export async function getBoard(filters: BoardFilters) {
+  return listOccurrencesBoard(filters);
+}
+
+export async function getOccurrenceHistory(id: string) {
+  return listHistory(id);
+}
+
+export async function changeStatus(
+  id: string,
+  status: string,
+  actor: HistoryActor & { note?: string | null },
+) {
+  return updateWorkflowStatus(id, status, actor);
+}
+
+export async function changePrioridade(
+  id: string,
+  prioridade: string,
+  actor: HistoryActor,
+) {
+  return updatePrioridade(id, prioridade, actor);
+}
+
 function validateDrivers(drivers: any[]) {
   if (!Array.isArray(drivers) || drivers.length === 0) {
     throw new Error("Drivers: informe pelo menos o Motorista 01.");
@@ -403,6 +449,10 @@ export async function updateOccurrence(id: string, payload: any) {
     show_section_passageiros: payload.showSectionPassageiros ?? true,
     devolutiva_before_evidences: payload.devolutivaBeforeEvidences ?? false,
     tratativa: payload.tratativa ?? null,
+    // Prioridade também é editável pelo formulário. O workflow_status NÃO é
+    // tocado aqui de propósito — ele é gerido pelo quadro da Central
+    // (PATCH /occurrences/:id/status), não deve ser sobrescrito a cada edição.
+    prioridade: payload.prioridade ?? undefined,
     analisado_por: payload.analisadoPor ?? null,
     analisado_por_user_id: payload.analisadoPorUserId ?? null,
   });
