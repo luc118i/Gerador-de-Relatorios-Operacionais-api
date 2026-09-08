@@ -69,6 +69,10 @@ export const createOccurrenceSchema = z.object({
     .optional()
     .nullable(),
   prioridade: z.enum(["CRITICA", "ALTA", "MEDIA", "BAIXA"]).optional().nullable(),
+  // "REPORT" = fluxo do Gerador de Relatórios (default); "CENTRAL" = cadastro
+  // direto na Central (cadastro rápido / importação da passagem) — não aparece
+  // na Home nem nas análises de relatório.
+  origin: z.enum(["REPORT", "CENTRAL"]).optional(),
 
   analisadoPor: z.string().trim().optional().nullable(),
   // Vínculo best-effort com o usuário logado no app quando `analisadoPor` foi
@@ -208,4 +212,23 @@ export const patchStatusSchema = z.object({
 export const patchPrioridadeSchema = z.object({
   prioridade: z.enum(["CRITICA", "ALTA", "MEDIA", "BAIXA"]),
   ...ACTOR,
+});
+
+/** Importação em lote da passagem de serviço (WhatsApp). Cada linha vira uma
+ *  ocorrência GENERICO com reportTitle = subject. */
+export const importOccurrencesSchema = z.object({
+  eventDate: dateStr,
+  analisadoPor: z.string().trim().optional().nullable(),
+  analisadoPorUserId: z.string().uuid().optional().nullable(),
+  operador: z.string().trim().optional().nullable(),
+  rows: z
+    .array(
+      z.object({
+        vehicleNumber: z.string().trim().min(1),
+        subject: z.string().trim().min(1),
+        detalhes: z.string().trim().default(""),
+      }),
+    )
+    .min(1)
+    .max(60),
 });

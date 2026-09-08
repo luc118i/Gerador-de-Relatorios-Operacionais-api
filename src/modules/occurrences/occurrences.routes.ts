@@ -5,6 +5,7 @@ import {
   boardQuerySchema,
   patchStatusSchema,
   patchPrioridadeSchema,
+  importOccurrencesSchema,
 } from "./occurrences.schemas.js";
 import {
   createOccurrence,
@@ -14,6 +15,7 @@ import {
   getOccurrenceHistory,
   changeStatus,
   changePrioridade,
+  importOccurrences,
 } from "./occurrences.service.js";
 
 import {
@@ -65,6 +67,17 @@ export function occurrencesRoutes(app: Express) {
       const filters = boardQuerySchema.parse(req.query);
       const data = await getBoard(filters);
       res.json({ data });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // Importação em lote da passagem de serviço (WhatsApp). Must be before /:id.
+  app.post("/occurrences/import", async (req, res, next) => {
+    try {
+      const payload = importOccurrencesSchema.parse(req.body);
+      const data = await importOccurrences(payload);
+      res.status(201).json({ data });
     } catch (err) {
       next(err);
     }

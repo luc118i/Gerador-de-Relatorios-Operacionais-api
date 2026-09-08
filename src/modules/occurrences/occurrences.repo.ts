@@ -214,6 +214,7 @@ const LIST_OCCURRENCE_SELECT = `
       tratativa,
       workflow_status,
       prioridade,
+      origin,
       analisado_por,
       analisado_por_user_id,
       justificativa_registro,
@@ -295,6 +296,7 @@ function mapListRow(o: any) {
     tratativa: o.tratativa ?? null,
     workflowStatus: o.workflow_status ?? "PENDENTE",
     prioridade: o.prioridade ?? "MEDIA",
+    origin: o.origin ?? "REPORT",
     analisadoPor: o.analisado_por ?? null,
     analisadoPorUserId: o.analisado_por_user_id ?? null,
     justificativaRegistro: o.justificativa_registro ?? null,
@@ -305,7 +307,9 @@ function mapListRow(o: any) {
   };
 }
 
-/** listar por dia (por created_at) com drivers + evidences (count) + type */
+/** listar por dia (por created_at) — SÓ ocorrências de relatório (origin
+ *  REPORT). As cadastradas direto na Central (origin CENTRAL) não entram na
+ *  Home nem nas análises de relatório. */
 export async function listOccurrencesByDay(date: string) {
   const startUTC = new Date(`${date}T00:00:00`).toISOString(); // Converte para UTC
   const endUTC = new Date(`${date}T23:59:59`).toISOString(); // Converte para UTC
@@ -313,6 +317,7 @@ export async function listOccurrencesByDay(date: string) {
   const { data, error } = await supabaseAdmin
     .from("occurrences")
     .select(LIST_OCCURRENCE_SELECT)
+    .neq("origin", "CENTRAL") // null-safe: pega REPORT e legado sem origin
     .gte("created_at", startUTC) // Utiliza UTC para a consulta
     .lte("created_at", endUTC)
     .order("created_at", { ascending: false });
@@ -481,6 +486,7 @@ export async function getOccurrenceById(id: string) {
       tratativa,
       workflow_status,
       prioridade,
+      origin,
       analisado_por,
       analisado_por_user_id,
       whatsapp_sent_count_1,
@@ -581,6 +587,7 @@ export async function getOccurrenceById(id: string) {
     tratativa: o.tratativa ?? null,
     workflowStatus: o.workflow_status ?? "PENDENTE",
     prioridade: o.prioridade ?? "MEDIA",
+    origin: o.origin ?? "REPORT",
     analisadoPor: o.analisado_por ?? null,
     analisadoPorUserId: o.analisado_por_user_id ?? null,
     whatsappSentCountD1: o.whatsapp_sent_count_1 ?? 0,
@@ -792,8 +799,9 @@ export async function updateOccurrenceData(id: string, data: any) {
       show_section_passageiros: data.show_section_passageiros ?? true,
       devolutiva_before_evidences: data.devolutiva_before_evidences ?? false,
       tratativa: data.tratativa ?? null,
-      // Só sobrescreve prioridade quando o payload a envia (undefined = mantém).
+      // Só sobrescreve quando o payload envia (undefined = mantém).
       ...(data.prioridade != null ? { prioridade: data.prioridade } : {}),
+      ...(data.origin != null ? { origin: data.origin } : {}),
       analisado_por: data.analisado_por ?? null,
       analisado_por_user_id: data.analisado_por_user_id ?? null,
       pdf_url: null,

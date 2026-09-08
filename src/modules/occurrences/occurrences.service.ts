@@ -150,6 +150,7 @@ export async function createOccurrence(payload: any) {
     workflow_status:
       payload.workflowStatus ?? (payload.tratativa ? "EM_TRATAMENTO" : "PENDENTE"),
     prioridade: payload.prioridade ?? "MEDIA",
+    origin: payload.origin ?? "REPORT",
     analisado_por: payload.analisadoPor ?? null,
     analisado_por_user_id: payload.analisadoPorUserId ?? null,
   });
@@ -343,6 +344,64 @@ export async function getBoard(filters: BoardFilters) {
   return listOccurrencesBoard(filters);
 }
 
+/** Escapa texto pra ir dentro de um <p> no relato_html. */
+function escapeHtml(s: string): string {
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+type ImportPayload = {
+  eventDate: string;
+  analisadoPor?: string | null | undefined;
+  analisadoPorUserId?: string | null | undefined;
+  operador?: string | null | undefined;
+  rows: Array<{ vehicleNumber: string; subject: string; detalhes: string }>;
+};
+
+/** Importa a passagem de serviço: uma ocorrência GENERICO por linha (mesmo
+ *  shape do cadastro rápido). Uma linha ruim não derruba o lote. */
+export async function importOccurrences(payload: ImportPayload) {
+  const created: string[] = [];
+  const failed: Array<{ index: number; error: string }> = [];
+
+  const operadorNota = payload.operador?.trim()
+    ? `<p><em>Passagem de serviço — ${escapeHtml(payload.operador.trim())}</em></p>`
+    : "";
+
+  for (let i = 0; i < payload.rows.length; i++) {
+    const row = payload.rows[i]!;
+    try {
+      const result = await createOccurrence({
+        typeCode: "GENERICO",
+        origin: "CENTRAL",
+        eventDate: payload.eventDate,
+        tripDate: payload.eventDate,
+        startTime: "00:00",
+        endTime: "00:00",
+        vehicleNumber: row.vehicleNumber.trim(),
+        drivers: [],
+        showSectionTripulacao: false,
+        showSectionViagem: false,
+        showSectionPassageiros: false,
+        reportTitle: row.subject.trim(),
+        occurrenceName: null,
+        relatoHtml: `<p>${escapeHtml(row.detalhes ?? "")}</p>${operadorNota}`,
+        prioridade: "MEDIA",
+        workflowStatus: "PENDENTE",
+        analisadoPor: payload.analisadoPor ?? null,
+        analisadoPorUserId: payload.analisadoPorUserId ?? null,
+      });
+      created.push(typeof result === "string" ? result : result.id);
+    } catch (err: any) {
+      failed.push({ index: i, error: err?.message ?? String(err) });
+    }
+  }
+
+  return { created, failed };
+}
+
 export async function getOccurrenceHistory(id: string) {
   return listHistory(id);
 }
@@ -453,6 +512,9 @@ export async function updateOccurrence(id: string, payload: any) {
     // tocado aqui de propósito — ele é gerido pelo quadro da Central
     // (PATCH /occurrences/:id/status), não deve ser sobrescrito a cada edição.
     prioridade: payload.prioridade ?? undefined,
+    // Editar pelo Gerador de Relatórios envia origin: "REPORT" — promove uma
+    // ocorrência que era só da Central (aí passa a aparecer na Home).
+    origin: payload.origin ?? undefined,
     analisado_por: payload.analisadoPor ?? null,
     analisado_por_user_id: payload.analisadoPorUserId ?? null,
   });
