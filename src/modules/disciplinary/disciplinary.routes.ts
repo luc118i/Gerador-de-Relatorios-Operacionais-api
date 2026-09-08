@@ -5,6 +5,7 @@ import {
   getDriverSituation,
   getDriverMonthlyOccurrences,
   getDashboardSummary,
+  getSolucionadoPorBase,
   getDriverOccurrenceHistory,
 } from "./disciplinary.service.js";
 import { getDriverConductPdfHandler } from "./driver-conduct.route.js";
@@ -15,6 +16,25 @@ export function disciplinaryRoutes(app: Express) {
   app.get("/dashboard/motoristas", async (_req, res, next) => {
     try {
       const data = await getDashboardSummary();
+      res.json({ data });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // % de ocorrências solucionadas no RIZER por base, num período — consumido
+  // pelo slide "Ocorrências por base" do modo apresentação (apresentacao.html).
+  app.get("/dashboard/solucionado-por-base", async (req, res, next) => {
+    try {
+      const from = String(req.query.from || "");
+      const to = String(req.query.to || "");
+      const isDate = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s);
+      if (!isDate(from) || !isDate(to)) {
+        return res
+          .status(400)
+          .json({ error: "from/to devem ser YYYY-MM-DD" });
+      }
+      const data = await getSolucionadoPorBase(from, to);
       res.json({ data });
     } catch (err) {
       next(err);

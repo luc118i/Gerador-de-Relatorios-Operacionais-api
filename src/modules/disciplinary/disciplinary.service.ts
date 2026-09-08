@@ -3,6 +3,7 @@ import {
   getDriverSituationRow,
   getDriverMonthlyOccurrencesRows,
   getDashboardRows,
+  getSolucionadoPorBaseRows,
   getDriverOccurrenceHistoryRows,
   type DashboardRow,
 } from "./disciplinary.repo.js";
@@ -88,6 +89,41 @@ export async function getDashboardSummary() {
     .map((r) => toRankingEntry(r, registryByKey));
 
   return { totals, porBase, ranking };
+}
+
+// % de ocorrências solucionadas no RIZER por base, num período (usado pelo
+// slide "Ocorrências por base" do modo apresentação). Agrega em memória —
+// mesmo padrão/normalização de base do getDashboardSummary.
+export async function getSolucionadoPorBase(fromISO: string, toISO: string) {
+  const rows = await getSolucionadoPorBaseRows(fromISO, toISO);
+
+  const registryByKey = buildRegistryLabelMap(
+    await listBaseResponsaveis().catch(() => []),
+  );
+  const SEM_BASE = "Sem base";
+  const baseLabelOf = (raw: string | null) =>
+    canonicalBaseLabel(raw, registryByKey) ?? SEM_BASE;
+
+  const map = new Map<
+    string,
+    { base: string; total: number; solucionado: number }
+  >();
+  for (const r of rows) {
+    const base = baseLabelOf(r.base_code);
+    const cur = map.get(base) ?? { base, total: 0, solucionado: 0 };
+    cur.total += 1;
+    if (r.solucionado) cur.solucionado += 1;
+    map.set(base, cur);
+  }
+
+  return Array.from(map.values())
+    .map((b) => ({
+      base: b.base,
+      total: b.total,
+      solucionado: b.solucionado,
+      pct: b.total ? Math.round((b.solucionado / b.total) * 100) : 0,
+    }))
+    .sort((a, b) => b.total - a.total);
 }
 
 const HISTORY_LIMIT = 20;

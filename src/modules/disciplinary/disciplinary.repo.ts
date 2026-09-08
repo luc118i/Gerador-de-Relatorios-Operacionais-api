@@ -65,6 +65,29 @@ export async function getDashboardRows(): Promise<DashboardRow[]> {
   return (data ?? []) as DashboardRow[];
 }
 
+export type SolucionadoPorBaseRow = {
+  base_code: string | null;
+  solucionado: boolean | null;
+  event_date: string;
+};
+
+// Ocorrências do período (só os campos usados pra agregar % solucionada no
+// RIZER por base — ver getSolucionadoPorBase). Filtra por event_date (data
+// do evento), que é o que casa com o período do modo apresentação.
+export async function getSolucionadoPorBaseRows(
+  fromISO: string,
+  toISO: string,
+): Promise<SolucionadoPorBaseRow[]> {
+  const { data, error } = await supabaseAdmin
+    .from("occurrences")
+    .select("base_code, solucionado, event_date")
+    .gte("event_date", fromISO)
+    .lte("event_date", toISO);
+
+  if (error) throw error;
+  return (data ?? []) as SolucionadoPorBaseRow[];
+}
+
 export type DriverOccurrenceHistoryRow = {
   id: string;
   event_date: string;
