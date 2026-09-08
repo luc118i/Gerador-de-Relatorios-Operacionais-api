@@ -354,8 +354,6 @@ function escapeHtml(s: string): string {
 
 type ImportPayload = {
   eventDate: string;
-  analisadoPor?: string | null | undefined;
-  analisadoPorUserId?: string | null | undefined;
   operador?: string | null | undefined;
   rows: Array<{ vehicleNumber: string; subject: string; detalhes: string }>;
 };
@@ -382,16 +380,18 @@ export async function importOccurrences(payload: ImportPayload) {
         endTime: "00:00",
         vehicleNumber: row.vehicleNumber.trim(),
         drivers: [],
+        // Tripulação começa oculta (sem motorista ainda — validação exigiria um).
+        // Viagem/passageiros ficam visíveis pro editor de relatório já mostrar
+        // os campos a preencher quando o usuário clicar em "Gerar relatório".
         showSectionTripulacao: false,
-        showSectionViagem: false,
-        showSectionPassageiros: false,
         reportTitle: row.subject.trim(),
         occurrenceName: null,
         relatoHtml: `<p>${escapeHtml(row.detalhes ?? "")}</p>${operadorNota}`,
         prioridade: "MEDIA",
         workflowStatus: "PENDENTE",
-        analisadoPor: payload.analisadoPor ?? null,
-        analisadoPorUserId: payload.analisadoPorUserId ?? null,
+        // sem responsável: definido só ao gerar o relatório.
+        analisadoPor: null,
+        analisadoPorUserId: null,
       });
       created.push(typeof result === "string" ? result : result.id);
     } catch (err: any) {

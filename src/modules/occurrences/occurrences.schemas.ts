@@ -218,8 +218,8 @@ export const patchPrioridadeSchema = z.object({
  *  ocorrência GENERICO com reportTitle = subject. */
 export const importOccurrencesSchema = z.object({
   eventDate: dateStr,
-  analisadoPor: z.string().trim().optional().nullable(),
-  analisadoPorUserId: z.string().uuid().optional().nullable(),
+  // sem analista aqui de propósito: o "responsável" é definido só quando
+  // alguém gera o relatório da ocorrência.
   operador: z.string().trim().optional().nullable(),
   rows: z
     .array(
