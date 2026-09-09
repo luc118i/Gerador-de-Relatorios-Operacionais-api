@@ -765,6 +765,16 @@ export async function updateOccurrence(id: string, data: any) {
   await deleteStorageFile(REPORTS_BUCKET, `occurrences/${id}/report.pdf`);
 }
 
+export async function getOccurrenceOrigin(id: string): Promise<string | null> {
+  const { data, error } = await supabaseAdmin
+    .from("occurrences")
+    .select("origin")
+    .eq("id", id)
+    .single();
+  if (error) return null;
+  return (data?.origin as string | null) ?? null;
+}
+
 export async function updateOccurrenceData(id: string, data: any) {
   const { error } = await supabaseAdmin
     .from("occurrences")
@@ -800,6 +810,9 @@ export async function updateOccurrenceData(id: string, data: any) {
       // Só sobrescreve quando o payload envia (undefined = mantém).
       ...(data.prioridade != null ? { prioridade: data.prioridade } : {}),
       ...(data.origin != null ? { origin: data.origin } : {}),
+      // Ao promover uma ocorrência da Central p/ relatório, a "data do
+      // relatório" (created_at, que a Home usa) passa a ser hoje.
+      ...(data.created_at != null ? { created_at: data.created_at } : {}),
       analisado_por: data.analisado_por ?? null,
       analisado_por_user_id: data.analisado_por_user_id ?? null,
       pdf_url: null,

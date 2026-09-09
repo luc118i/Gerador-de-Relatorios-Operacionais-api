@@ -1,5 +1,6 @@
 import {
   getTypeIdByCode,
+  getOccurrenceOrigin,
   insertOccurrence,
   insertDrivers,
   insertPoints,
@@ -502,6 +503,15 @@ function validateDrivers(drivers: any[]) {
 
 export async function updateOccurrence(id: string, payload: any) {
   const typeId = await getTypeIdByCode(payload.typeCode);
+
+  // Promoção CENTRAL -> REPORT: é agora que o relatório está sendo feito, então
+  // a data do relatório (created_at — a Home lista por ela) passa a ser hoje.
+  // Só mexe quando de fato está promovendo (origin atual === CENTRAL).
+  let promoteCreatedAt: string | undefined;
+  if (payload.origin === "REPORT") {
+    const prevOrigin = await getOccurrenceOrigin(id);
+    if (prevOrigin === "CENTRAL") promoteCreatedAt = new Date().toISOString();
+  }
   const tripulacaoAtiva = payload.showSectionTripulacao !== false;
   const drivers = tripulacaoAtiva ? validateDrivers(payload.drivers) : [];
 
@@ -566,6 +576,7 @@ export async function updateOccurrence(id: string, payload: any) {
     // Editar pelo Gerador de Relatórios envia origin: "REPORT" — promove uma
     // ocorrência que era só da Central (aí passa a aparecer na Home).
     origin: payload.origin ?? undefined,
+    created_at: promoteCreatedAt,
     analisado_por: payload.analisadoPor ?? null,
     analisado_por_user_id: payload.analisadoPorUserId ?? null,
   });
