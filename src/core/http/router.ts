@@ -16,6 +16,7 @@ import { baseResponsaveisRoutes } from "../../modules/base-responsaveis/base-res
 import { disciplinaryRoutes } from "../../modules/disciplinary/disciplinary.routes.js";
 import { linksRoutes } from "../../modules/links/links.routes.js";
 import { centralSettingsRoutes } from "../../modules/central-settings/central-settings.routes.js";
+import { occurrenceSharesRoutes } from "../../modules/occurrence-shares/occurrence-shares.routes.js";
 
 export function registerRoutes(app: Express) {
   occurrencesRoutes(app);
@@ -34,4 +35,5 @@ export function registerRoutes(app: Express) {
   baseResponsaveisRoutes(app);
   linksRoutes(app);
   centralSettingsRoutes(app);
+  occurrenceSharesRoutes(app);
 }
