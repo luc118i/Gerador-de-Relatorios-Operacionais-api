@@ -110,6 +110,7 @@ export async function getPublicOccurrence(token: string) {
     eventDate: o.eventDate ?? null,
     hora,
     geradoEm: new Date().toISOString(),
+    relatorioUrl: o.driveWebViewLink || null,
   };
 
   if (on("resumo")) {
