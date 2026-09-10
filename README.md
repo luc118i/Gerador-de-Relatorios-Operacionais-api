@@ -1,14 +1,25 @@
 <div align="center">
 
-# Gerador de Relatórios Operacionais — API
+<img src=".github/assets/banner.svg" alt="Gerador de Relatórios Operacionais — API" width="100%" />
+
+<br/>
+<br/>
 
 **Backend para gestão de ocorrências operacionais, geração de PDF e análise assistida por IA.**
 
-[![Node.js](https://img.shields.io/badge/Node.js-20+-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org)
-[![Express](https://img.shields.io/badge/Express-5-000000?style=flat-square&logo=express&logoColor=white)](https://expressjs.com)
-[![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-3FCF8E?style=flat-square&logo=supabase&logoColor=white)](https://supabase.com)
-[![Docker](https://img.shields.io/badge/Docker-ready-2496ED?style=flat-square&logo=docker&logoColor=white)](https://www.docker.com)
+<br/>
+
+[![Node.js](https://img.shields.io/badge/Node.js-20+-030213?style=for-the-badge&logo=node.js&logoColor=white)](https://nodejs.org)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-030213?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org)
+[![Express](https://img.shields.io/badge/Express-5-030213?style=for-the-badge&logo=express&logoColor=white)](https://expressjs.com)
+[![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-030213?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com)
+[![Docker](https://img.shields.io/badge/Docker-ready-030213?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com)
+
+</div>
+
+<div align="center">
+
+`REST` &nbsp;•&nbsp; `Puppeteer` &nbsp;•&nbsp; `Groq LLaMA 3.3` &nbsp;•&nbsp; `Google Drive` &nbsp;•&nbsp; `Supabase Storage`
 
 </div>
 
@@ -16,47 +27,68 @@
 
 ## Sobre o projeto
 
-API REST construída com Node.js e TypeScript para registro e acompanhamento de ocorrências operacionais em frotas de transporte público. A plataforma automatiza a geração de relatórios em PDF, integra análise de texto por IA e envia documentos diretamente ao Google Drive.
+API REST construída com **Node.js** e **TypeScript** para registro e acompanhamento de ocorrências operacionais em frotas de transporte público. A plataforma automatiza a geração de relatórios em PDF, integra análise de texto por IA e envia documentos diretamente ao Google Drive.
+
+O frontend que consome esta API vive em [`Gerador-de-Relatorios-Operacionais-APP`](https://github.com/luc118i/Gerador-de-Relatorios-Operacionais-APP).
 
 ---
 
 ## Funcionalidades
 
-- **Registro de ocorrências** com validação de dados, vínculos de motoristas e snapshots históricos
-- **Geração de PDF** via Puppeteer com suporte a múltiplos templates, cabeçalho/rodapé e imagens embutidas
-- **Análise por IA** — correção ortográfica (Groq LLaMA 3.3 70B + LanguageTool) e sumarização de relatos
-- **Gestão de evidências** com otimização automática de imagens (Sharp) e URLs assinadas (Supabase Storage)
-- **Exportação para Google Drive** via integração com a API do Google
-- **Notificações em tempo real** via Google Apps Script para atualização de planilhas
-- **Geração híbrida de PDF** — Chrome local para PDFs pequenos, Browserless remoto para volumes maiores
+| | |
+|---|---|
+| **Registro de ocorrências** | Validação de dados, vínculos de motoristas e snapshots históricos imutáveis |
+| **Geração de PDF** | Puppeteer com múltiplos templates, cabeçalho/rodapé e imagens embutidas |
+| **Análise por IA** | Correção ortográfica (Groq LLaMA 3.3 70B + LanguageTool) e sumarização de relatos |
+| **Gestão de evidências** | Otimização automática de imagens (Sharp) e URLs assinadas (Supabase Storage) |
+| **Exportação para Google Drive** | Integração direta com a API do Google |
+| **Notificações em tempo real** | Google Apps Script para atualização de planilhas |
+| **Geração híbrida de PDF** | Chrome local para PDFs pequenos, Browserless remoto para volumes maiores |
 
 ---
 
 ## Stack de tecnologias
 
+<table>
+<tr>
+<td valign="top" width="50%">
+
 **Runtime e linguagem**
-- Node.js 20+ · TypeScript 5.9
+- Node.js 20+
+- TypeScript 5.9
 
 **Framework e validação**
-- Express 5 · Zod
+- Express 5
+- Zod
 
 **Banco de dados e armazenamento**
 - Supabase (PostgreSQL + Storage)
 
+</td>
+<td valign="top" width="50%">
+
 **Geração de documentos**
-- Puppeteer · Browserless · Sharp
+- Puppeteer · Playwright
+- Browserless
+- Sharp
+- `@turbodocx/html-to-docx` · juice
 
 **Integrações externas**
-- Google Drive API · Google Apps Script · Groq SDK · LanguageTool
+- Google Drive API · Google Apps Script
+- Groq SDK · LanguageTool
 
 **Infraestrutura**
 - Docker
+
+</td>
+</tr>
+</table>
 
 ---
 
 ## Arquitetura
 
-O projeto segue uma arquitetura modular orientada a domínios com separação clara entre camadas:
+O projeto segue uma arquitetura modular orientada a domínios, com separação clara entre camadas.
 
 ```
 src/
@@ -79,7 +111,7 @@ src/
 └── index.ts          # Ponto de entrada
 ```
 
-**Padrão de cada módulo:** `routes` → `service` → `repo` → Supabase
+> **Padrão de cada módulo:** `routes` → `service` → `repo` → Supabase
 
 ---
 
@@ -212,7 +244,13 @@ O texto de um relato passa por detecção de erros via LanguageTool antes de ser
 Ao vincular um motorista a uma ocorrência, um trigger de banco cria um snapshot imutável dos dados do motorista naquele momento, garantindo integridade histórica dos relatórios.
 
 **Tratamento centralizado de erros**
-Um único middleware converte erros do Zod, erros de domínio (`AppError`) e códigos de erro do PostgreSQL (23505, 23503, PGRST116) em respostas HTTP padronizadas.
+Um único middleware converte erros do Zod, erros de domínio (`AppError`) e códigos de erro do PostgreSQL (`23505`, `23503`, `PGRST116`) em respostas HTTP padronizadas.
 
 **Otimização de evidências**
 Imagens enviadas são redimensionadas para até 1200px e recomprimidas em JPEG (75–80% de qualidade) antes do armazenamento, equilibrando qualidade e custo de storage.
+
+---
+
+<div align="center">
+<sub>Desenvolvido para otimização de processos logísticos · <a href="https://github.com/luc118i">luc118i</a></sub>
+</div>

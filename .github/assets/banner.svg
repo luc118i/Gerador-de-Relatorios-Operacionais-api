@@ -1,0 +1,44 @@
+<svg width="1200" height="300" viewBox="0 0 1200 300" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Gerador de Relatórios Operacionais — API">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="300" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#030213"/>
+      <stop offset="0.55" stop-color="#0b0b1f"/>
+      <stop offset="1" stop-color="#0f172a"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="0" y2="300" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#d4183d"/>
+      <stop offset="1" stop-color="#7a0f24"/>
+    </linearGradient>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M40 0H0V40" fill="none" stroke="#ffffff" stroke-opacity="0.04"/>
+    </pattern>
+    <clipPath id="round"><rect width="1200" height="300" rx="16"/></clipPath>
+  </defs>
+
+  <g clip-path="url(#round)" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+    <rect width="1200" height="300" fill="url(#bg)"/>
+    <rect width="1200" height="300" fill="url(#grid)"/>
+    <circle cx="1040" cy="60" r="260" fill="#d4183d" fill-opacity="0.06"/>
+    <circle cx="1120" cy="280" r="180" fill="#ffffff" fill-opacity="0.03"/>
+    <rect x="0" y="0" width="6" height="300" fill="url(#accent)"/>
+
+    <text x="72" y="96" fill="#ffffff" fill-opacity="0.55" font-size="15" letter-spacing="4" font-weight="600">SISTEMA OPERACIONAL DE FROTA</text>
+
+    <text x="70" y="158" fill="#ffffff" font-size="52" font-weight="700" letter-spacing="-1">Gerador de Relatórios</text>
+    <text x="70" y="214" fill="#ffffff" font-size="52" font-weight="700" letter-spacing="-1">Operacionais<tspan fill="#d4183d">.</tspan></text>
+
+    <g transform="translate(560, 176)">
+      <rect x="0" y="0" width="86" height="40" rx="10" fill="#d4183d"/>
+      <text x="43" y="26" fill="#ffffff" font-size="18" font-weight="700" text-anchor="middle">API</text>
+    </g>
+
+    <text x="72" y="262" fill="#8a8a9e" font-size="19" font-weight="500">REST · Ocorrências · Geração de PDF · Análise assistida por IA</text>
+
+    <g transform="translate(760, 232)" fill="#c9c9d6" font-size="13" font-weight="600">
+      <g><rect width="94" height="26" rx="8" fill="#ffffff" fill-opacity="0.06"/><text x="47" y="17" text-anchor="middle">Node 20</text></g>
+      <g transform="translate(104,0)"><rect width="104" height="26" rx="8" fill="#ffffff" fill-opacity="0.06"/><text x="52" y="17" text-anchor="middle">TypeScript</text></g>
+      <g transform="translate(218,0)"><rect width="90" height="26" rx="8" fill="#ffffff" fill-opacity="0.06"/><text x="45" y="17" text-anchor="middle">Express 5</text></g>
+      <g transform="translate(318,0)"><rect width="94" height="26" rx="8" fill="#ffffff" fill-opacity="0.06"/><text x="47" y="17" text-anchor="middle">Supabase</text></g>
+    </g>
+  </g>
+</svg>
