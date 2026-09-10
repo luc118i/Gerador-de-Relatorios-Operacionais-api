@@ -938,16 +938,24 @@ export async function updateTratativa(
   if (!tipo) throw new Error(`tratativa desconhecida: ${tratativa}`);
 
   // Motoristas vinculados a essa ocorrência (1 ou 2, ver OccurrenceDriverDTO.position).
+  // Só entram os que têm driver_id — ocorrências vindas do GAS (passagem de
+  // serviço) gravam o motorista inline (name/registry) com driver_id NULL, e
+  // occurrence_measures.driver_id é NOT NULL. Sem esse filtro, o insert abaixo
+  // estourava 23502 ao mudar a tratativa pra Advertência/Suspensão/etc.
   const { data: linked, error: linkedError } = await supabaseAdmin
     .from("occurrence_drivers")
     .select("driver_id")
     .eq("occurrence_id", id);
   if (linkedError) throw linkedError;
 
-  if (linked && linked.length > 0) {
+  const linkedWithId = (linked ?? []).filter(
+    (d): d is { driver_id: string } => d.driver_id != null,
+  );
+
+  if (linkedWithId.length > 0) {
     // Fonte única de verdade agora é occurrence_measures — o trigger
     // trg_sync_tratativa reflete em occurrences.tratativa automaticamente.
-    const rows = linked.map((d) => ({
+    const rows = linkedWithId.map((d) => ({
       occurrence_id: id,
       driver_id: d.driver_id,
       tipo,
@@ -959,8 +967,9 @@ export async function updateTratativa(
       .insert(rows);
     if (insertError) throw insertError;
   } else {
-    // Sem motorista vinculado (não deveria acontecer) — sem driver_id não dá
-    // pra gravar em occurrence_measures (coluna NOT NULL), cai no update direto.
+    // Sem motorista com driver_id (ex.: ocorrência do GAS com motorista só
+    // inline) — sem driver_id não dá pra gravar em occurrence_measures (coluna
+    // NOT NULL), então grava a tratativa direto em occurrences.
     metaUpdate.tratativa = tratativa;
   }
 
